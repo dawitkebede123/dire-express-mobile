@@ -269,6 +269,9 @@ class AppLocalizationsAm extends AppLocalizations {
   String get profileChoosePhoto => 'ከማዕከለ ስዕል ምረጥ';
 
   @override
+  String get profileCropPhoto => 'አንቀሳቅስ እና መጠን ቀይር';
+
+  @override
   String get statusPending => 'በመጠባበቅ ላይ';
 
   @override

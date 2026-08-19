@@ -94,6 +94,7 @@
   "profileSignOut": "ውጣ",
   "profileTakePhoto": "ፎቶ አንሳ",
   "profileChoosePhoto": "ከማዕከለ ስዕል ምረጥ",
+  "profileCropPhoto": "አንቀሳቅስ እና መጠን ቀይር",
 
   "statusPending": "በመጠባበቅ ላይ",
   "statusCreated": "ተፈጥሯል",

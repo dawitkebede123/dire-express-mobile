@@ -6,6 +6,14 @@ class AppConfig {
     defaultValue: 'http://187.124.55.8',
   );
 
+  static String? resolveMediaUrl(String? url) {
+    final value = url?.trim();
+    if (value == null || value.isEmpty) return null;
+    if (value.startsWith('http://') || value.startsWith('https://')) return value;
+    if (value.startsWith('/')) return '$apiBaseUrl$value';
+    return value;
+  }
+
   static const _mapboxKey = 'runtime_mapbox_token';
   static const _pusherKey = 'runtime_pusher_key';
   static const _pusherClusterKey = 'runtime_pusher_cluster';

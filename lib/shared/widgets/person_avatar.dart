@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/config.dart';
 import '../../theme/app_theme.dart';
 
 class PersonAvatar extends StatelessWidget {
@@ -52,7 +53,7 @@ class PersonAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = imageUrl?.trim();
+    final url = AppConfig.resolveMediaUrl(imageUrl);
     final hasUrl = url != null && url.isNotEmpty;
     final size = radius * 2;
     return SizedBox(
@@ -61,7 +62,7 @@ class PersonAvatar extends StatelessWidget {
       child: ClipOval(
         child: hasUrl
             ? Image.network(
-                url,
+                url!,
                 width: size,
                 height: size,
                 fit: BoxFit.cover,

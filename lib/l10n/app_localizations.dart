@@ -608,6 +608,12 @@ abstract class AppLocalizations {
   /// **'Choose from library'**
   String get profileChoosePhoto;
 
+  /// No description provided for @profileCropPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Move and scale'**
+  String get profileCropPhoto;
+
   /// No description provided for @statusPending.
   ///
   /// In en, this message translates to:

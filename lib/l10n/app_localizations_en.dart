@@ -271,6 +271,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileChoosePhoto => 'Choose from library';
 
   @override
+  String get profileCropPhoto => 'Move and scale';
+
+  @override
   String get statusPending => 'Pending';
 
   @override

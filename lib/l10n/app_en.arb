@@ -94,6 +94,7 @@
   "profileSignOut": "Sign out",
   "profileTakePhoto": "Take photo",
   "profileChoosePhoto": "Choose from library",
+  "profileCropPhoto": "Move and scale",
 
   "statusPending": "Pending",
   "statusCreated": "Created",

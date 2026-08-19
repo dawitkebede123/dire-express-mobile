@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
+import '../../core/config.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
 import '../../models/user.dart';
@@ -161,11 +162,11 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
                 children: [
                   Text(l10n.brokerDeliveryPhoto, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
                   const SizedBox(height: 6),
-                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(load.proofOfDelivery!.photoUrl, height: 160, width: double.infinity, fit: BoxFit.cover)),
+                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(AppConfig.resolveMediaUrl(load.proofOfDelivery!.photoUrl) ?? load.proofOfDelivery!.photoUrl, height: 160, width: double.infinity, fit: BoxFit.cover)),
                   const SizedBox(height: 12),
                   Text(l10n.brokerRecipientSignature, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
                   const SizedBox(height: 6),
-                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(load.proofOfDelivery!.signatureUrl, height: 120, width: double.infinity, fit: BoxFit.contain)),
+                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(AppConfig.resolveMediaUrl(load.proofOfDelivery!.signatureUrl) ?? load.proofOfDelivery!.signatureUrl, height: 120, width: double.infinity, fit: BoxFit.contain)),
                 ],
               ),
             ),

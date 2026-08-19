@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
 
 import '../../core/api_client.dart';
+import '../../core/config.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../features/auth/register_screen.dart';
 import '../../l10n/app_localizations.dart';
@@ -13,6 +17,7 @@ import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/language_switcher.dart';
 import '../../shared/widgets/person_avatar.dart';
 import '../../theme/app_theme.dart';
+import 'avatar_crop_page.dart';
 
 enum _EditField { name, phone, plate, vehicle }
 
@@ -88,6 +93,59 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  void _previewPhoto(String imageUrl) {
+    final url = AppConfig.resolveMediaUrl(imageUrl);
+    if (url == null) return;
+    final l10n = AppLocalizations.of(context);
+
+    showDialog<void>(
+      context: context,
+      useSafeArea: false,
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.pop(dialogContext),
+                ),
+              ),
+              Center(
+                child: InteractiveViewer(
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (dialogContext.mounted) Navigator.pop(dialogContext);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l10n.toastUploadFailed)),
+                        );
+                      });
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _changePhoto() async {
     final l10n = AppLocalizations.of(context);
     final source = await showModalBottomSheet<ImageSource>(
@@ -115,20 +173,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
     if (source == null || !mounted) return;
 
-    final file = await ImagePicker().pickImage(
-      source: source,
-      imageQuality: 85,
-      maxWidth: 1200,
-    );
-    if (file == null || !mounted) return;
-
-    final user = ref.read(authControllerProvider).user;
-    if (user == null) return;
-
-    setState(() => _saving = true);
     try {
+      final file = await ImagePicker().pickImage(source: source);
+      if (file == null || !mounted) return;
+
+      final originalBytes = await file.readAsBytes();
+      if (!mounted) return;
+      final croppedBytes = await Navigator.of(context).push<Uint8List>(
+        MaterialPageRoute(builder: (_) => AvatarCropPage(imageBytes: originalBytes)),
+      );
+      if (croppedBytes == null || !mounted) return;
+
+      final user = ref.read(authControllerProvider).user;
+      if (user == null) return;
+
+      final croppedFile = File(
+        p.join(Directory.systemTemp.path, 'avatar-${DateTime.now().millisecondsSinceEpoch}.png'),
+      );
+      await croppedFile.writeAsBytes(croppedBytes, flush: true);
+
+      setState(() => _saving = true);
       final api = ref.read(apiClientProvider);
-      final url = await api.uploadFile(file.path, kind: 'avatar');
+      final url = await api.uploadFile(croppedFile.path, kind: 'avatar');
       final data = await api.updateMe(imageUrl: url);
       if (!mounted) return;
       final savedUrl = data['imageUrl'] as String? ?? url;
@@ -271,31 +337,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             child: Column(
               children: [
-                GestureDetector(
-                  onTap: _saving || _loading ? null : _changePhoto,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PersonAvatar(
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: _saving || _loading
+                          ? null
+                          : () {
+                              final photo = user.imageUrl?.trim();
+                              if (photo != null && photo.isNotEmpty) {
+                                _previewPhoto(photo);
+                              } else {
+                                _changePhoto();
+                              }
+                            },
+                      child: PersonAvatar(
                         imageUrl: user.imageUrl,
                         name: user.name,
                         radius: 32,
                         backgroundColor: const Color(0x26FFFFFF),
                       ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Material(
+                        color: Colors.white,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: _saving || _loading ? null : _changePhoto,
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.camera_alt, size: 14, color: AppColors.primary),
                           ),
-                          child: const Icon(Icons.camera_alt, size: 14, color: AppColors.primary),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(user.name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
