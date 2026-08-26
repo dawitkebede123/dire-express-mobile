@@ -39,6 +39,9 @@ class _CustomerTrackListScreenState extends ConsumerState<CustomerTrackListScree
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(loadsRefreshProvider, (_, _) {
+      _fetch();
+    });
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppHeader(

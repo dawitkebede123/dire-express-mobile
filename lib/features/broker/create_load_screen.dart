@@ -7,12 +7,16 @@ import '../../core/api_client.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/directory.dart';
 import '../../shared/format.dart';
+import '../../shared/system_price.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/load_date_time_picker.dart';
 import '../../shared/widgets/stepper.dart';
 import '../../theme/app_theme.dart';
 
 class CreateLoadScreen extends ConsumerStatefulWidget {
-  const CreateLoadScreen({super.key});
+  const CreateLoadScreen({super.key, this.asCustomer = false});
+
+  final bool asCustomer;
 
   @override
   ConsumerState<CreateLoadScreen> createState() => _CreateLoadScreenState();
@@ -22,7 +26,7 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
   var _step = 0;
   var _submitting = false;
   var _uploadingReceipt = false;
-  var _receiptRequired = false;
+  DeviceTier? _tier;
   String? _paymentReceiptUrl;
   List<CustomerProfile> _customers = [];
   String? _customerId;
@@ -35,19 +39,35 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
   final _notes = TextEditingController();
   DateTime? _pickupDate;
   DateTime? _deliveryDate;
-  List<String> _pickupHints = [];
-  List<String> _deliveryHints = [];
+  List<PlaceSuggestion> _pickupHints = [];
+  List<PlaceSuggestion> _deliveryHints = [];
+  PlaceSuggestion? _pickupPlace;
+  PlaceSuggestion? _deliveryPlace;
+  double? _distanceKm;
+  double? _systemPrice;
+  var _pricingBusy = false;
+  var _pricingError = false;
+
+  bool get _receiptRequired => _tier?.receiptRequired ?? false;
 
   @override
   void initState() {
     super.initState();
     final api = ref.read(apiClientProvider);
-    api.listCustomers().then((c) {
-      if (mounted) setState(() => _customers = c);
-    });
-    api.getDeviceTier().then((tier) {
-      if (mounted) setState(() => _receiptRequired = tier.receiptRequired);
-    }).catchError((_) {});
+    if (!widget.asCustomer) {
+      api.listCustomers().then((c) {
+        if (mounted) setState(() => _customers = c);
+      });
+      _fetchDeviceTier();
+    }
+  }
+
+  Future<void> _fetchDeviceTier() async {
+    if (widget.asCustomer) return;
+    try {
+      final tier = await ref.read(apiClientProvider).getDeviceTier();
+      if (mounted) setState(() => _tier = tier);
+    } catch (_) {}
   }
 
   @override
@@ -59,6 +79,33 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
     _cargo.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  void _resetForm() {
+    _weight.clear();
+    _rate.clear();
+    _pickup.clear();
+    _delivery.clear();
+    _cargo.clear();
+    _notes.clear();
+    setState(() {
+      _step = 0;
+      _submitting = false;
+      _uploadingReceipt = false;
+      _paymentReceiptUrl = null;
+      _equipment = 'DRY_VAN';
+      _pickupDate = null;
+      _deliveryDate = null;
+      _pickupHints = [];
+      _deliveryHints = [];
+      _pickupPlace = null;
+      _deliveryPlace = null;
+      _distanceKm = null;
+      _systemPrice = null;
+      _pricingBusy = false;
+      _pricingError = false;
+    });
+    _fetchDeviceTier();
   }
 
   Future<void> _suggest(String query, bool pickup) async {
@@ -73,18 +120,84 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
     });
   }
 
+  void _invalidatePrice() {
+    _distanceKm = null;
+    _systemPrice = null;
+    _pricingError = false;
+  }
+
+  Future<void> _refreshSystemPrice() async {
+    final pickupText = _pickup.text.trim();
+    final deliveryText = _delivery.text.trim();
+    if (pickupText.isEmpty || deliveryText.isEmpty) return;
+    setState(() {
+      _pricingBusy = true;
+      _pricingError = false;
+    });
+    try {
+      final api = ref.read(apiClientProvider);
+      try {
+        await api.fetchRuntimeConfig();
+      } catch (_) {}
+      var pickup = _pickupPlace;
+      var delivery = _deliveryPlace;
+      if (pickup == null || pickup.placeName != pickupText) {
+        pickup = await api.geocodePlace(pickupText);
+      }
+      if (delivery == null || delivery.placeName != deliveryText) {
+        delivery = await api.geocodePlace(deliveryText);
+      }
+      if (!mounted) return;
+      if (pickup == null || delivery == null) {
+        setState(() {
+          _pricingBusy = false;
+          _pricingError = true;
+          _distanceKm = null;
+          _systemPrice = null;
+        });
+        return;
+      }
+      final km = await api.drivingDistanceKm(
+        fromLat: pickup.lat,
+        fromLng: pickup.lng,
+        toLat: delivery.lat,
+        toLng: delivery.lng,
+      );
+      if (!mounted) return;
+      if (km == null) {
+        setState(() {
+          _pricingBusy = false;
+          _pricingError = true;
+          _distanceKm = null;
+          _systemPrice = null;
+        });
+        return;
+      }
+      setState(() {
+        _pickupPlace = pickup;
+        _deliveryPlace = delivery;
+        _distanceKm = km;
+        _systemPrice = SystemPricing.calculate(km);
+        _pricingBusy = false;
+        _pricingError = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pricingBusy = false;
+        _pricingError = true;
+        _distanceKm = null;
+        _systemPrice = null;
+      });
+    }
+  }
+
   Future<void> _pickDate({required bool pickup}) async {
-    final now = DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now.subtract(const Duration(days: 1)),
-      lastDate: now.add(const Duration(days: 365)),
+    final dt = await pickLoadDateTime(
+      context,
+      initial: pickup ? _pickupDate : _deliveryDate,
     );
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(now));
-    if (time == null || !mounted) return;
-    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    if (dt == null || !mounted) return;
     setState(() {
       if (pickup) {
         _pickupDate = dt;
@@ -96,15 +209,29 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
 
   void _next() {
     final l10n = AppLocalizations.of(context);
-    if (_step == 0 && (_customerId == null || _customerId!.isEmpty)) {
+    if (_step == 0 && !widget.asCustomer && (_customerId == null || _customerId!.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastSelectCustomer)));
       return;
     }
-    if (_step == 1 && (_pickup.text.isEmpty || _delivery.text.isEmpty || _pickupDate == null)) {
+    if (_step == 1 &&
+        (_pickup.text.trim().isEmpty ||
+            _delivery.text.trim().isEmpty ||
+            _pickupDate == null ||
+            _cargo.text.trim().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastPickupDeliveryRequired)));
       return;
     }
-    setState(() => _step = (_step + 1).clamp(0, 2));
+    final next = (_step + 1).clamp(0, 2);
+    setState(() => _step = next);
+    if (next == 2) {
+      _refreshSystemPrice();
+      _fetchDeviceTier();
+    }
+  }
+
+  void _back() {
+    if (_step <= 0) return;
+    setState(() => _step--);
   }
 
   Future<void> _uploadReceipt() async {
@@ -134,36 +261,60 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
     setState(() => _submitting = true);
     try {
       await ref.read(apiClientProvider).createLoad({
-        'customerId': _customerId,
+        if (!widget.asCustomer) 'customerId': _customerId,
         'equipmentType': _equipment,
         if (_weight.text.isNotEmpty) 'weightLbs': num.tryParse(_weight.text),
         if (_rate.text.isNotEmpty) 'rate': num.tryParse(_rate.text),
+        'systemPrice': _systemPrice ?? SystemPricing.basePriceEtb,
+        if (_distanceKm != null) 'distanceKm': _distanceKm,
         'pickupAddress': _pickup.text.trim(),
         'deliveryAddress': _delivery.text.trim(),
         'pickupDate': _pickupDate!.toUtc().toIso8601String(),
         if (_deliveryDate != null) 'deliveryDate': _deliveryDate!.toUtc().toIso8601String(),
-        if (_cargo.text.isNotEmpty) 'cargoDescription': _cargo.text.trim(),
+        'cargoDescription': _cargo.text.trim(),
         if (_notes.text.isNotEmpty) 'notes': _notes.text.trim(),
         if (_paymentReceiptUrl != null && _paymentReceiptUrl!.isNotEmpty)
           'paymentReceiptUrl': _paymentReceiptUrl,
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastLoadCreated)));
       ref.read(loadsRefreshProvider.notifier).state++;
-      context.go('/broker/loads');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(widget.asCustomer ? l10n.toastRequestSubmitted : l10n.toastLoadCreated),
+      ));
+      if (widget.asCustomer) {
+        context.go('/customer');
+      } else {
+        context.go('/broker/loads');
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.isReceiptRequired) {
-        setState(() => _receiptRequired = true);
+        final current = _tier;
+        if (current != null && !current.receiptRequired) {
+          setState(() {
+            _tier = DeviceTier(
+              loadsCreated: current.loadsCreated,
+              deviceLoadsCreated: current.deviceLoadsCreated,
+              emailLoadsCreated: current.emailLoadsCreated,
+              freeLimit: current.freeLimit,
+              receiptRequired: true,
+            );
+          });
+        }
+        _fetchDeviceTier();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastReceiptRequired)));
       } else if (e.isDeviceIdRequired) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDeviceIdRequired)));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastCreateLoadFailed)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(widget.asCustomer ? l10n.toastRequestFailed : l10n.toastCreateLoadFailed),
+        ));
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastCreateLoadFailed)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(widget.asCustomer ? l10n.toastRequestFailed : l10n.toastCreateLoadFailed),
+      ));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -175,29 +326,46 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
     final locale = Localizations.localeOf(context);
     final steps = [l10n.brokerStepDetails, l10n.brokerStepRoute, l10n.brokerStepConfirm];
     final customer = _customers.where((c) => c.id == _customerId).firstOrNull;
-    final canSubmit = !_submitting && (!_receiptRequired || (_paymentReceiptUrl?.isNotEmpty ?? false));
+    final canSubmit = !_submitting &&
+        !_pricingBusy &&
+        (!_receiptRequired || (_paymentReceiptUrl?.isNotEmpty ?? false));
+    final billedSystemPrice = _systemPrice ?? SystemPricing.basePriceEtb;
 
-    return Scaffold(
-      appBar: AppHeader(title: l10n.brokerLoadsTitle, showBack: true, notificationsPath: '/broker/notifications', profilePath: '/broker/profile'),
+    return PopScope(
+      canPop: _step == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _back();
+      },
+      child: Scaffold(
+      appBar: AppHeader(
+        title: widget.asCustomer ? l10n.customerRequestTitle : l10n.brokerLoadsTitle,
+        showBack: !widget.asCustomer || _step > 0,
+        onBack: _step > 0 ? _back : null,
+        notificationsPath: widget.asCustomer ? '/customer/notifications' : '/broker/notifications',
+        profilePath: widget.asCustomer ? '/customer/profile' : '/broker/profile',
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           WizardStepper(steps: steps, current: _step),
           const SizedBox(height: 20),
           if (_step == 0) ...[
-            _Section(
-              icon: Icons.apartment,
-              title: l10n.brokerCustomerInfo,
-              child: DropdownButtonFormField<String>(
-                value: _customerId,
-                hint: Text(l10n.brokerSelectCustomerPlaceholder),
-                items: _customers
-                    .map((c) => DropdownMenuItem(value: c.id, child: Text(c.company ?? c.user.name)))
-                    .toList(),
-                onChanged: (v) => setState(() => _customerId = v),
+            if (!widget.asCustomer) ...[
+              _Section(
+                icon: Icons.apartment,
+                title: l10n.brokerCustomerInfo,
+                child: DropdownButtonFormField<String>(
+                  value: _customerId,
+                  hint: Text(l10n.brokerSelectCustomerPlaceholder),
+                  items: _customers
+                      .map((c) => DropdownMenuItem(value: c.id, child: Text(c.company ?? c.user.name)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _customerId = v),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
             _Section(
               icon: Icons.inventory_2_outlined,
               title: l10n.brokerLoadDetails,
@@ -215,9 +383,9 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: _weight, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.brokerWeightLbs, hintText: l10n.brokerWeightPlaceholder))),
+                      Expanded(child: TextField(controller: _weight, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.brokerWeightLbs))),
                       const SizedBox(width: 8),
-                      Expanded(child: TextField(controller: _rate, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.brokerRate, hintText: l10n.brokerRatePlaceholder))),
+                      Expanded(child: TextField(controller: _rate, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.brokerRate))),
                     ],
                   ),
                 ],
@@ -232,12 +400,19 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
             _AddressField(
               label: l10n.brokerPickupAddress,
               controller: _pickup,
-              hint: l10n.brokerPickupPlaceholder,
               suggestions: _pickupHints,
-              onChanged: (v) => _suggest(v, true),
+              onChanged: (v) {
+                if (_pickupPlace != null && _pickupPlace!.placeName != v) {
+                  _pickupPlace = null;
+                  _invalidatePrice();
+                }
+                _suggest(v, true);
+              },
               onSelect: (v) => setState(() {
-                _pickup.text = v;
+                _pickup.text = v.placeName;
+                _pickupPlace = v;
                 _pickupHints = [];
+                _invalidatePrice();
               }),
             ),
             const SizedBox(height: 12),
@@ -248,17 +423,26 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
               trailing: const Icon(Icons.calendar_today),
               onTap: () => _pickDate(pickup: true),
             ),
+            const SizedBox(height: 12),
             _AddressField(
               label: l10n.brokerDeliveryAddress,
               controller: _delivery,
-              hint: l10n.brokerDeliveryPlaceholder,
               suggestions: _deliveryHints,
-              onChanged: (v) => _suggest(v, false),
+              onChanged: (v) {
+                if (_deliveryPlace != null && _deliveryPlace!.placeName != v) {
+                  _deliveryPlace = null;
+                  _invalidatePrice();
+                }
+                _suggest(v, false);
+              },
               onSelect: (v) => setState(() {
-                _delivery.text = v;
+                _delivery.text = v.placeName;
+                _deliveryPlace = v;
                 _deliveryHints = [];
+                _invalidatePrice();
               }),
             ),
+            const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.brokerDeliveryDate),
@@ -266,10 +450,13 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
               trailing: const Icon(Icons.calendar_today),
               onTap: () => _pickDate(pickup: false),
             ),
-            TextField(controller: _cargo, decoration: InputDecoration(labelText: l10n.brokerCargoDescription, hintText: l10n.brokerCargoPlaceholder)),
             const SizedBox(height: 12),
-            TextField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: l10n.brokerNotes, hintText: l10n.brokerNotesPlaceholder)),
+            TextField(controller: _cargo, decoration: InputDecoration(labelText: l10n.brokerCargoDescription)),
+            const SizedBox(height: 12),
+            TextField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: l10n.brokerNotes)),
             const SizedBox(height: 20),
+            OutlinedButton(onPressed: _back, child: Text(l10n.commonBack)),
+            const SizedBox(height: 8),
             FilledButton(onPressed: _next, child: Text(l10n.brokerReviewLoad)),
           ] else ...[
             _Section(
@@ -277,7 +464,8 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
               title: l10n.brokerConfirmLoad,
               child: Column(
                 children: [
-                  _kv(l10n.brokerConfirmCustomer, customer?.company ?? customer?.user.name ?? '—'),
+                  if (!widget.asCustomer)
+                    _kv(l10n.brokerConfirmCustomer, customer?.company ?? customer?.user.name ?? '—'),
                   _kv(l10n.brokerConfirmEquipment, equipmentLabel(l10n, _equipment)),
                   _kv(l10n.brokerConfirmWeight, _weight.text.isEmpty ? '—' : l10n.weightLbs(_weight.text)),
                   _kv(
@@ -286,6 +474,7 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
                         ? l10n.loadRateTbd
                         : formatCurrency(num.tryParse(_rate.text.replaceAll(',', '')), locale),
                   ),
+                  _systemPriceRows(l10n, locale, billedSystemPrice),
                   _kv(l10n.brokerConfirmPickup, _pickup.text),
                   _kv(l10n.brokerConfirmDelivery, _delivery.text),
                   _kv(l10n.brokerConfirmPickupDate, _pickupDate == null ? '—' : formatDateTime(_pickupDate!, locale)),
@@ -293,6 +482,13 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
                 ],
               ),
             ),
+            if (!widget.asCustomer && _tier != null && !_receiptRequired) ...[
+              const SizedBox(height: 12),
+              Text(
+                l10n.brokerFreeLoadsRemaining(_tier!.remaining, _tier!.freeLimit),
+                style: const TextStyle(color: AppColors.onSurfaceVariant),
+              ),
+            ],
             if (_receiptRequired) ...[
               const SizedBox(height: 12),
               _Section(
@@ -301,7 +497,10 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(l10n.brokerPaymentReceiptHint, style: const TextStyle(color: AppColors.onSurfaceVariant)),
+                    Text(
+                      l10n.brokerPaymentReceiptHintAmount(formatCurrency(billedSystemPrice, locale)),
+                      style: const TextStyle(color: AppColors.onSurfaceVariant),
+                    ),
                     const SizedBox(height: 12),
                     if (_paymentReceiptUrl != null)
                       Padding(
@@ -326,13 +525,73 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
               ),
             ],
             const SizedBox(height: 20),
+            OutlinedButton(onPressed: _back, child: Text(l10n.commonBack)),
+            const SizedBox(height: 8),
             FilledButton(
               onPressed: canSubmit ? _submit : null,
-              child: Text(_submitting ? l10n.brokerCreating : l10n.brokerCreateLoad),
+              child: Text(
+                _submitting
+                    ? (widget.asCustomer ? l10n.customerSubmitting : l10n.brokerCreating)
+                    : (widget.asCustomer ? l10n.customerSubmit : l10n.brokerCreateLoad),
+              ),
             ),
           ],
         ],
       ),
+    ),
+    );
+  }
+
+  Widget _systemPriceRows(AppLocalizations l10n, Locale locale, double billedSystemPrice) {
+    if (_pricingBusy) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            SizedBox(width: 110, child: Text(l10n.systemPrice, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
+            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(l10n.systemPriceCalculating, style: const TextStyle(fontSize: 13))),
+          ],
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _kv(l10n.systemPrice, formatCurrency(billedSystemPrice, locale)),
+        if (_distanceKm != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 110, bottom: 4),
+            child: Text(
+              l10n.systemPriceBreakdown(
+                SystemPricing.formatNumber(SystemPricing.basePriceEtb, maxFractionDigits: 2),
+                SystemPricing.formatKm(_distanceKm!),
+                SystemPricing.formatNumber(SystemPricing.perKmEtb, maxFractionDigits: 2),
+              ),
+              style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+            ),
+          ),
+        if (_pricingError) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 110, bottom: 4),
+            child: Text(
+              l10n.systemPriceBaseFallback(formatCurrency(SystemPricing.basePriceEtb, locale)),
+              style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 110, bottom: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.systemPriceUnavailable, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                TextButton(onPressed: _refreshSystemPrice, child: Text(l10n.systemPriceRetry)),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -377,7 +636,6 @@ class _AddressField extends StatelessWidget {
   const _AddressField({
     required this.label,
     required this.controller,
-    required this.hint,
     required this.suggestions,
     required this.onChanged,
     required this.onSelect,
@@ -385,10 +643,9 @@ class _AddressField extends StatelessWidget {
 
   final String label;
   final TextEditingController controller;
-  final String hint;
-  final List<String> suggestions;
+  final List<PlaceSuggestion> suggestions;
   final ValueChanged<String> onChanged;
-  final ValueChanged<String> onSelect;
+  final ValueChanged<PlaceSuggestion> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -397,7 +654,7 @@ class _AddressField extends StatelessWidget {
       children: [
         TextField(
           controller: controller,
-          decoration: InputDecoration(labelText: label, hintText: hint),
+          decoration: InputDecoration(labelText: label),
           onChanged: onChanged,
         ),
         if (suggestions.isNotEmpty)
@@ -405,7 +662,7 @@ class _AddressField extends StatelessWidget {
             (s) => ListTile(
               dense: true,
               leading: const Icon(Icons.place_outlined, size: 18),
-              title: Text(s, style: const TextStyle(fontSize: 13)),
+              title: Text(s.placeName, style: const TextStyle(fontSize: 13)),
               onTap: () => onSelect(s),
             ),
           ),

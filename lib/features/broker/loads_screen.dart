@@ -49,20 +49,34 @@ class _BrokerLoadsScreenState extends ConsumerState<BrokerLoadsScreen> {
         title: l10n.brokerLoadsTitle,
         notificationsPath: '/broker/notifications',
         profilePath: '/broker/profile',
-        action: IconButton(
-          tooltip: l10n.brokerCreateLoad,
-          onPressed: () => context.push('/broker/loads/new'),
-          icon: const Icon(Icons.add),
-        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        onPressed: () => context.push('/broker/loads/new'),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.brokerCreateLoad),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
               child: _loads.isEmpty
-                  ? ListView(children: [Padding(padding: const EdgeInsets.all(48), child: Text(l10n.brokerLoadsEmpty, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.onSurfaceVariant)))])
+                  ? ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(48),
+                          child: Text(
+                            l10n.brokerLoadsEmpty,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: AppColors.onSurfaceVariant),
+                          ),
+                        ),
+                      ],
+                    )
                   : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                       itemCount: _loads.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (_, i) => LoadRowCard(load: _loads[i], href: '/broker/loads/${_loads[i].id}'),

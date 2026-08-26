@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/app_localizations.dart';
-
-String intlTag(Locale locale) => locale.languageCode == 'am' ? 'am_ET' : 'en_US';
+import 'ethiopian_date.dart';
+import 'system_price.dart';
 
 String formatCurrency(num? amount, Locale locale) {
   if (amount == null) return '—';
@@ -11,6 +11,17 @@ String formatCurrency(num? amount, Locale locale) {
     return '${NumberFormat('#,##0.00', 'en').format(amount)} ብር';
   }
   return NumberFormat.currency(locale: 'en', name: 'ETB', symbol: 'ETB ').format(amount);
+}
+
+String formatSystemPrice(AppLocalizations l10n, Locale locale, double amount, double? distanceKm) {
+  final price = formatCurrency(amount, locale);
+  if (distanceKm == null) return price;
+  final breakdown = l10n.systemPriceBreakdown(
+    SystemPricing.formatNumber(SystemPricing.basePriceEtb, maxFractionDigits: 2),
+    SystemPricing.formatKm(distanceKm),
+    SystemPricing.formatNumber(SystemPricing.perKmEtb, maxFractionDigits: 2),
+  );
+  return '$price ($breakdown)';
 }
 
 String compactCurrency(num amount, Locale locale) {
@@ -21,20 +32,39 @@ String compactCurrency(num amount, Locale locale) {
   return formatCurrency(amount, locale);
 }
 
+String formatTime12h(DateTime date, Locale locale) {
+  final hour24 = date.hour;
+  final hour = hour24 % 12 == 0 ? 12 : hour24 % 12;
+  final minute = date.minute.toString().padLeft(2, '0');
+  if (locale.languageCode == 'am') {
+    final period = hour24 < 12 ? 'ጥዋት' : 'ከሰዓት';
+    return '$hour:$minute $period';
+  }
+  final period = hour24 < 12 ? 'AM' : 'PM';
+  return '$hour:$minute $period';
+}
+
 String formatDayTime(DateTime date, AppLocalizations l10n, Locale locale) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final target = DateTime(date.year, date.month, date.day);
-  final time = DateFormat.Hm(intlTag(locale)).format(date);
+  final time = formatTime12h(date, locale);
   final diff = target.difference(today).inDays;
   if (diff == 0) return l10n.formatToday(time);
   if (diff == 1) return l10n.formatTomorrow(time);
   if (diff == -1) return l10n.formatYesterday(time);
-  return DateFormat('MMM d, HH:mm', intlTag(locale)).format(date);
+  if (locale.languageCode == 'am') {
+    return '${EthiopianDate.fromGregorian(date).format()}፣ $time';
+  }
+  return '${DateFormat('MMM d', 'en_US').format(date)}, $time';
 }
 
 String formatDateTime(DateTime date, Locale locale) {
-  return DateFormat('MMM d, h:mm a', intlTag(locale)).format(date);
+  final time = formatTime12h(date, locale);
+  if (locale.languageCode == 'am') {
+    return '${EthiopianDate.fromGregorian(date).format()}፣ $time';
+  }
+  return '${DateFormat('MMM d', 'en_US').format(date)}, $time';
 }
 
 String shortAddress(String address) {

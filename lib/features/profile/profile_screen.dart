@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +10,8 @@ import 'package:path/path.dart' as p;
 
 import '../../core/api_client.dart';
 import '../../core/config.dart';
+import '../../core/phone.dart';
 import '../../features/auth/auth_controller.dart';
-import '../../features/auth/register_screen.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/format.dart';
 import '../../shared/widgets/app_header.dart';
@@ -19,7 +20,7 @@ import '../../shared/widgets/person_avatar.dart';
 import '../../theme/app_theme.dart';
 import 'avatar_crop_page.dart';
 
-enum _EditField { name, phone, plate, vehicle }
+enum _EditField { name, phone, company, plate, vehicle }
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, required this.backPath});
@@ -34,6 +35,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _draft = TextEditingController();
   var _name = '';
   var _phone = '';
+  var _company = '';
   var _plate = '';
   var _vehicle = '';
   _EditField? _editing;
@@ -47,6 +49,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (user != null) {
       _name = user.name;
       _phone = user.phone ?? '';
+      _company = user.company ?? '';
+      _plate = user.plateNo ?? '';
+      _vehicle = user.vehicleType ?? '';
     }
     _load();
   }
@@ -59,33 +64,78 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _load() async {
     final api = ref.read(apiClientProvider);
-    final isDriver = ref.read(authControllerProvider).user?.isDriver == true;
+    final currentUser = ref.read(authControllerProvider).user;
+    final isDriver = currentUser?.isDriver == true;
+    final isCustomer = currentUser?.isCustomer == true;
     try {
       final user = await api.getMeProfile();
       String plate = '';
       String vehicle = '';
+      String? companyFromRole;
       if (isDriver) {
         try {
           final driver = await api.getMyDriverProfile();
           plate = driver.plateNo ?? '';
           vehicle = driver.vehicleType ?? '';
         } catch (_) {}
+        if (plate.isEmpty) {
+          plate = user['plateNo']?.toString().trim() ??
+              user['plateNumber']?.toString().trim() ??
+              '';
+        }
+        if (vehicle.isEmpty) {
+          vehicle = user['vehicleType']?.toString().trim() ?? '';
+        }
+      }
+      if (isCustomer) {
+        try {
+          final customer = await api.getMyCustomerProfile();
+          companyFromRole = customer.company;
+        } catch (_) {}
       }
       if (!mounted) return;
+      final current = ref.read(authControllerProvider).user;
       final savedName = user['name'] is String ? user['name'] as String : _name;
-      final savedPhone = user['phone'] as String?;
+      final rawPhone = user['phone']?.toString().trim();
+      final savedPhone = (rawPhone != null && rawPhone.isNotEmpty)
+          ? rawPhone
+          : (current?.phone?.trim().isNotEmpty == true ? current!.phone : (_phone.isNotEmpty ? _phone : null));
+      final nestedCustomer = user['customer'];
+      final nestedCompany = nestedCustomer is Map ? nestedCustomer['company']?.toString().trim() : null;
+      final rawCompany = user['company']?.toString().trim();
+      final savedCompany = [
+        companyFromRole,
+        (rawCompany != null && rawCompany.isNotEmpty) ? rawCompany : null,
+        (nestedCompany != null && nestedCompany.isNotEmpty) ? nestedCompany : null,
+        current?.company,
+        _company.isNotEmpty ? _company : null,
+      ].map((v) => v?.trim()).firstWhere((v) => v != null && v.isNotEmpty, orElse: () => null);
       final savedImage = user['imageUrl'] as String?;
       setState(() {
         _name = savedName;
         _phone = savedPhone ?? '';
-        _plate = plate;
-        _vehicle = vehicle;
+        _company = savedCompany ?? '';
+        _plate = plate.isNotEmpty ? plate : (_plate.isNotEmpty ? _plate : (current?.plateNo ?? ''));
+        _vehicle = vehicle.isNotEmpty ? vehicle : (_vehicle.isNotEmpty ? _vehicle : (current?.vehicleType ?? ''));
       });
-      final current = ref.read(authControllerProvider).user;
       if (current != null) {
-        ref.read(authControllerProvider.notifier).applyUser(
-          current.applyProfile(name: savedName, phone: savedPhone).applyImageUrl(savedImage),
-        );
+        final next = current
+            .applyProfile(
+              name: savedName,
+              phone: savedPhone,
+              company: savedCompany,
+              plateNo: _plate.isNotEmpty ? _plate : current.plateNo,
+              vehicleType: _vehicle.isNotEmpty ? _vehicle : current.vehicleType,
+            )
+            .applyImageUrl(savedImage);
+        if (next.name != current.name ||
+            next.phone != current.phone ||
+            next.company != current.company ||
+            next.plateNo != current.plateNo ||
+            next.vehicleType != current.vehicleType ||
+            next.imageUrl != current.imageUrl) {
+          ref.read(authControllerProvider.notifier).applyUser(next);
+        }
       }
     } catch (_) {
     } finally {
@@ -114,10 +164,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               Center(
                 child: InteractiveViewer(
-                  child: Image.network(
-                    url,
+                  child: CachedNetworkImage(
+                    imageUrl: url,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) {
+                    fadeInDuration: const Duration(milliseconds: 150),
+                    errorWidget: (_, _, _) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
                         if (!mounted) return;
@@ -215,6 +266,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return switch (field) {
       _EditField.name => _name,
       _EditField.phone => _phone,
+      _EditField.company => _company,
       _EditField.plate => _plate,
       _EditField.vehicle => _vehicle,
     };
@@ -260,6 +312,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           phoneToSave = normalized;
         }
         break;
+      case _EditField.company:
       case _EditField.plate:
       case _EditField.vehicle:
         break;
@@ -268,22 +321,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     setState(() => _saving = true);
     try {
       final api = ref.read(apiClientProvider);
-      if (field == _EditField.name || field == _EditField.phone) {
+      if (field == _EditField.name || field == _EditField.phone || field == _EditField.company) {
         final data = await api.updateMe(
           name: field == _EditField.name ? raw : null,
           phone: phoneToSave,
+          company: field == _EditField.company ? raw : null,
         );
+        if (field == _EditField.company && user.isCustomer) {
+          try {
+            await api.updateMyCustomerProfile(company: raw);
+          } catch (_) {}
+        }
         if (!mounted) return;
         final savedName = data['name'] as String? ?? _name;
         final savedPhone = data['phone'] as String?;
+        final savedCompany = data['company'] as String? ?? (field == _EditField.company ? raw : _company);
         setState(() {
           _name = savedName;
-          _phone = savedPhone ?? '';
+          _phone = savedPhone ?? _phone;
+          _company = savedCompany;
           _editing = null;
           _draft.clear();
         });
         ref.read(authControllerProvider.notifier).applyUser(
-          user.applyProfile(name: savedName, phone: savedPhone),
+          user.applyProfile(name: savedName, phone: savedPhone ?? user.phone, company: savedCompany),
         );
       } else {
         final driver = await api.updateMyDriverProfile(
@@ -291,18 +352,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           vehicleType: field == _EditField.vehicle ? raw : null,
         );
         if (!mounted) return;
+        final savedPlate = (driver.plateNo != null && driver.plateNo!.trim().isNotEmpty)
+            ? driver.plateNo!.trim()
+            : (field == _EditField.plate ? raw : _plate);
+        final savedVehicle = (driver.vehicleType != null && driver.vehicleType!.trim().isNotEmpty)
+            ? driver.vehicleType!.trim()
+            : (field == _EditField.vehicle ? raw : _vehicle);
         setState(() {
-          _plate = driver.plateNo ?? '';
-          _vehicle = driver.vehicleType ?? '';
+          _plate = savedPlate;
+          _vehicle = savedVehicle;
           _editing = null;
           _draft.clear();
         });
+        ref.read(authControllerProvider.notifier).applyUser(
+          user.applyProfile(
+            name: user.name,
+            phone: user.phone,
+            plateNo: savedPlate.isNotEmpty ? savedPlate : user.plateNo,
+            vehicleType: savedVehicle.isNotEmpty ? savedVehicle : user.vehicleType,
+          ),
+        );
       }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastProfileSaved)));
     } on ApiException catch (e) {
       if (!mounted) return;
-      final message =
-          e.code == 'invalidPhone' ? l10n.toastInvalidPhone : l10n.toastProfileSaveFailed;
+      final message = switch (e.code) {
+        'phoneRegistered' => l10n.toastPhoneRegistered,
+        'invalidPhone' => l10n.toastInvalidPhone,
+        _ => l10n.toastProfileSaveFailed,
+      };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
@@ -378,7 +456,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(user.name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
-                Text(user.email, style: const TextStyle(color: Color(0xCCFFFFFF))),
+                Text(
+                  user.email.isEmpty ? l10n.commonEmpty : user.email,
+                  style: const TextStyle(color: Color(0xCCFFFFFF)),
+                ),
               ],
             ),
           ),
@@ -404,13 +485,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   label: l10n.registerPhone,
                   value: _phone.isEmpty ? l10n.commonEmpty : _phone,
                   field: _EditField.phone,
-                  hint: l10n.registerPhonePlaceholder,
                   keyboardType: TextInputType.phone,
                 ),
+                if (user.isCustomer || user.isBroker)
+                  _editableRow(
+                    l10n: l10n,
+                    icon: Icons.apartment_outlined,
+                    label: l10n.registerCompany,
+                    value: _company.isEmpty ? l10n.commonEmpty : _company,
+                    field: _EditField.company,
+                  ),
                 _viewRow(
                   icon: Icons.mail_outline,
                   label: l10n.profileEmail,
-                  value: user.email,
+                  value: user.email.isEmpty ? l10n.commonEmpty : user.email,
                 ),
                 _viewRow(
                   icon: Icons.shield_outlined,
@@ -443,7 +531,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     label: l10n.registerPlateNo,
                     value: _plate.isEmpty ? l10n.commonEmpty : _plate,
                     field: _EditField.plate,
-                    hint: l10n.registerPlatePlaceholder,
                   ),
                   _editableRow(
                     l10n: l10n,
@@ -451,7 +538,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     label: l10n.registerVehicleType,
                     value: _vehicle.isEmpty ? l10n.commonEmpty : _vehicle,
                     field: _EditField.vehicle,
-                    hint: l10n.registerVehiclePlaceholder,
                   ),
                 ],
               ],
@@ -495,7 +581,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required String value,
     required _EditField field,
     bool first = false,
-    String? hint,
     TextInputType? keyboardType,
   }) {
     final editing = _editing == field;
@@ -535,7 +620,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               autofocus: true,
               enabled: !_saving,
               keyboardType: keyboardType,
-              decoration: InputDecoration(hintText: hint),
             ),
             const SizedBox(height: 8),
             Row(

@@ -1,7 +1,17 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../../core/config.dart';
 import '../../theme/app_theme.dart';
+
+Future<void> prefetchPersonAvatar(String? imageUrl) async {
+  final url = AppConfig.resolveMediaUrl(imageUrl);
+  if (url == null || url.isEmpty) return;
+  try {
+    await DefaultCacheManager().downloadFile(url);
+  } catch (_) {}
+}
 
 class PersonAvatar extends StatelessWidget {
   const PersonAvatar({
@@ -51,29 +61,35 @@ class PersonAvatar extends StatelessWidget {
     return Icon(fallbackIcon, size: radius, color: foregroundColor);
   }
 
+  Widget _placeholder() {
+    return ColoredBox(
+      color: backgroundColor,
+      child: Center(child: _fallback()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final url = AppConfig.resolveMediaUrl(imageUrl);
-    final hasUrl = url != null && url.isNotEmpty;
     final size = radius * 2;
+    final cachePx = (size * MediaQuery.devicePixelRatioOf(context)).round().clamp(32, 512);
     return SizedBox(
       width: size,
       height: size,
       child: ClipOval(
-        child: hasUrl
-            ? Image.network(
-                url!,
+        child: url == null || url.isEmpty
+            ? _placeholder()
+            : CachedNetworkImage(
+                imageUrl: url,
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => ColoredBox(
-                  color: backgroundColor,
-                  child: Center(child: _fallback()),
-                ),
-              )
-            : ColoredBox(
-                color: backgroundColor,
-                child: Center(child: _fallback()),
+                memCacheWidth: cachePx,
+                memCacheHeight: cachePx,
+                fadeInDuration: const Duration(milliseconds: 150),
+                fadeOutDuration: const Duration(milliseconds: 100),
+                placeholder: (_, _) => _placeholder(),
+                errorWidget: (_, _, _) => _placeholder(),
               ),
       ),
     );

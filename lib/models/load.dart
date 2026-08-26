@@ -6,6 +6,12 @@ double? parseNumber(dynamic value) {
   return double.tryParse(value.toString());
 }
 
+ProofOfDelivery? _podFromJson(dynamic value) {
+  if (value is Map<String, dynamic>) return ProofOfDelivery.fromJson(value);
+  if (value is Map) return ProofOfDelivery.fromJson(Map<String, dynamic>.from(value));
+  return null;
+}
+
 class GeoPoint {
   const GeoPoint({required this.lat, required this.lng, this.recordedAt});
 
@@ -69,6 +75,8 @@ class FreightLoad {
     this.equipmentType,
     this.weightLbs,
     this.rate,
+    this.systemPrice,
+    this.distanceKm,
     this.notes,
     this.createdAt,
     this.customer,
@@ -94,6 +102,8 @@ class FreightLoad {
   final String? equipmentType;
   final double? weightLbs;
   final double? rate;
+  final double? systemPrice;
+  final double? distanceKm;
   final String? notes;
   final DateTime? createdAt;
   final NamedPerson? customer;
@@ -139,6 +149,8 @@ class FreightLoad {
       equipmentType: json['equipmentType'] as String?,
       weightLbs: parseNumber(json['weightLbs']),
       rate: parseNumber(json['rate']),
+      systemPrice: parseNumber(json['systemPrice']),
+      distanceKm: parseNumber(json['distanceKm']),
       notes: json['notes'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
@@ -151,9 +163,7 @@ class FreightLoad {
           ? NamedPerson.fromJson(driverJson!['user'] as Map<String, dynamic>)
           : null,
       driverVehicle: driverJson?['vehicleType'] as String?,
-      proofOfDelivery: json['proofOfDelivery'] is Map<String, dynamic>
-          ? ProofOfDelivery.fromJson(json['proofOfDelivery'] as Map<String, dynamic>)
-          : null,
+      proofOfDelivery: _podFromJson(json['proofOfDelivery'] ?? json['pod']),
       latestLocation: latest,
     );
   }

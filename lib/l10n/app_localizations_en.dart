@@ -89,6 +89,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonCancel => 'Cancel';
 
   @override
+  String get commonContinue => 'Continue';
+
+  @override
   String get commonSave => 'Save';
 
   @override
@@ -150,13 +153,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginSubtitle => 'Sign in to manage your loads.';
 
   @override
-  String get loginEmail => 'Email';
+  String get loginEmail => 'Email or phone';
 
   @override
   String get loginPassword => 'Password';
 
   @override
-  String get loginEmailPlaceholder => 'you@gmail.com';
+  String get loginEmailPlaceholder => 'you@gmail.com or 0912345678';
 
   @override
   String get loginSubmit => 'Sign in';
@@ -374,7 +377,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get toastInvalidCredentials => 'Invalid email or password';
+  String get toastInvalidCredentials => 'Invalid email, phone, or password';
+
+  @override
+  String get toastRoleMismatch =>
+      'This account does not match the selected role.';
 
   @override
   String get toastConnectionFailed =>
@@ -384,10 +391,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toastRegistrationFailed => 'Registration failed';
 
   @override
+  String get toastPhoneRequired => 'Enter a valid phone number';
+
+  @override
+  String get toastReferredByNotFound => 'That referral email was not found';
+
+  @override
+  String get toastNameRequired => 'Enter your full name';
+
+  @override
+  String get toastPasswordTooShort => 'Password must be at least 6 characters';
+
+  @override
   String get toastAccountCreated => 'Account created';
 
   @override
   String get toastEmailRegistered => 'Email already registered';
+
+  @override
+  String get toastInvalidEmail => 'Enter a valid email address';
+
+  @override
+  String get toastPhoneRegistered => 'Phone number already registered';
 
   @override
   String get toastInvalidPhone =>
@@ -397,6 +422,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toastAgentIdRequired => 'Agent ID is required';
 
   @override
+  String get toastPlateRequired => 'Plate number is required';
+
+  @override
   String get toastAgentIdInvalid => 'This Agent ID is not valid';
 
   @override
@@ -404,7 +432,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get toastPickupDeliveryRequired =>
-      'Pickup, delivery, and pickup date are required';
+      'Pickup, delivery, pickup date, and cargo description are required';
 
   @override
   String get toastCreateLoadFailed => 'Failed to create load';
@@ -440,6 +468,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toastAssignFailed => 'Failed to assign driver';
 
   @override
+  String get toastAssignWaitingPayment =>
+      'This load is waiting for payment approval.';
+
+  @override
+  String get toastCannotChangeDriver =>
+      'The driver cannot be changed after they accept.';
+
+  @override
   String get toastDriverAssigned => 'Driver assigned';
 
   @override
@@ -469,6 +505,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get toastPodSubmitFailed => 'Failed to submit proof of delivery';
+
+  @override
+  String get podFarFromDelivery =>
+      'You are more than 1 km from the expected delivery location.';
 
   @override
   String get toastPhotoUploaded => 'Photo uploaded';
@@ -609,6 +649,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brokerConfirmRate => 'Rate';
 
   @override
+  String get systemPrice => 'System price';
+
+  @override
+  String systemPriceBreakdown(String base, String km, String perKm) {
+    return '$base + $km km × $perKm';
+  }
+
+  @override
+  String get systemPriceCalculating => 'Calculating system price...';
+
+  @override
+  String get systemPriceUnavailable =>
+      'Could not calculate distance. Check the addresses and try again.';
+
+  @override
+  String get systemPriceRetry => 'Retry';
+
+  @override
+  String systemPriceBaseFallback(String amount) {
+    return 'Distance unavailable. Base fee of $amount will be charged.';
+  }
+
+  @override
+  String brokerFreeLoadsRemaining(int remaining, int limit) {
+    return '$remaining of $limit free loads left';
+  }
+
+  @override
+  String brokerPaymentReceiptHintAmount(String amount) {
+    return 'You have used your free loads. Pay $amount and upload a payment receipt to continue.';
+  }
+
+  @override
   String get brokerConfirmPickup => 'Pickup';
 
   @override
@@ -652,6 +725,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get brokerAssignDriver => 'Assign Driver';
+
+  @override
+  String get brokerChangeDriver => 'Change Driver';
 
   @override
   String get brokerNoDrivers => 'No available drivers.';
@@ -903,7 +979,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get customerTrackEmptyHint =>
-      'Shipments created by your broker appear here for live tracking.';
+      'Request a shipment or wait for your broker to create one. Active loads appear here for live tracking.';
 
   @override
   String get customerRequestTransport => 'Request transport';

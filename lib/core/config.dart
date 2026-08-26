@@ -6,6 +6,9 @@ class AppConfig {
     defaultValue: 'http://187.124.55.8',
   );
 
+  static const defaultBasePrice = 50.0;
+  static const defaultPricePerKm = 1.0;
+
   static String? resolveMediaUrl(String? url) {
     final value = url?.trim();
     if (value == null || value.isEmpty) return null;
@@ -17,10 +20,14 @@ class AppConfig {
   static const _mapboxKey = 'runtime_mapbox_token';
   static const _pusherKey = 'runtime_pusher_key';
   static const _pusherClusterKey = 'runtime_pusher_cluster';
+  static const _basePriceKey = 'runtime_base_price';
+  static const _pricePerKmKey = 'runtime_price_per_km';
 
   static String mapboxToken = '';
   static String pusherKey = '';
   static String pusherCluster = '';
+  static double basePrice = defaultBasePrice;
+  static double pricePerKm = defaultPricePerKm;
 
   static bool get hasMapbox => mapboxToken.isNotEmpty;
   static bool get hasPusher => pusherKey.isNotEmpty;
@@ -29,10 +36,14 @@ class AppConfig {
     required String mapboxToken,
     required String pusherKey,
     required String pusherCluster,
+    double? basePrice,
+    double? pricePerKm,
   }) {
     AppConfig.mapboxToken = mapboxToken;
     AppConfig.pusherKey = pusherKey;
     AppConfig.pusherCluster = pusherCluster;
+    if (basePrice != null) AppConfig.basePrice = basePrice;
+    if (pricePerKm != null) AppConfig.pricePerKm = pricePerKm;
   }
 
   static Future<void> loadCached() async {
@@ -40,6 +51,8 @@ class AppConfig {
     mapboxToken = prefs.getString(_mapboxKey) ?? '';
     pusherKey = prefs.getString(_pusherKey) ?? '';
     pusherCluster = prefs.getString(_pusherClusterKey) ?? '';
+    basePrice = prefs.getDouble(_basePriceKey) ?? defaultBasePrice;
+    pricePerKm = prefs.getDouble(_pricePerKmKey) ?? defaultPricePerKm;
   }
 
   static Future<void> saveCached() async {
@@ -47,5 +60,7 @@ class AppConfig {
     await prefs.setString(_mapboxKey, mapboxToken);
     await prefs.setString(_pusherKey, pusherKey);
     await prefs.setString(_pusherClusterKey, pusherCluster);
+    await prefs.setDouble(_basePriceKey, basePrice);
+    await prefs.setDouble(_pricePerKmKey, pricePerKm);
   }
 }

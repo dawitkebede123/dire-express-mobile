@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_udid/flutter_udid.dart';
 import 'package:uuid/uuid.dart';
@@ -8,34 +10,69 @@ class AuthStorage {
   static const _storage = FlutterSecureStorage();
   static const _uuid = Uuid();
 
-  Future<String?> readToken() => _storage.read(key: _tokenKey);
+  String? _token;
+  var _tokenLoaded = false;
+  String? _deviceId;
+  Future<String>? _deviceIdFuture;
 
-  Future<void> writeToken(String token) =>
-      _storage.write(key: _tokenKey, value: token);
+  Future<String?> readToken() async {
+    if (_tokenLoaded) return _token;
+    _token = await _storage.read(key: _tokenKey);
+    _tokenLoaded = true;
+    return _token;
+  }
+
+  Future<void> writeToken(String token) async {
+    _token = token;
+    _tokenLoaded = true;
+    await _storage.write(key: _tokenKey, value: token);
+  }
 
   /// Platform device ID (Android ANDROID_ID / iOS IDFV). Survives reinstall on Android.
-  /// Cached in secure storage; migrated from older random UUIDs to the platform ID.
-  Future<String> getOrCreateDeviceId() async {
-    final cached = await _storage.read(key: _deviceIdKey);
-    String? platformId;
-    try {
-      final udid = await FlutterUdid.consistentUdid;
-      if (udid.trim().isNotEmpty) platformId = udid.trim();
-    } catch (_) {}
+  /// Cached in memory and secure storage; migrated from older random UUIDs to the platform ID.
+  Future<String> getOrCreateDeviceId() {
+    if (_deviceId != null) return Future.value(_deviceId);
+    return _deviceIdFuture ??= _loadDeviceId();
+  }
 
-    if (platformId != null) {
-      if (cached != platformId) {
-        await _storage.write(key: _deviceIdKey, value: platformId);
-      }
-      return platformId;
+  Future<String> _loadDeviceId() async {
+    final cached = await _storage.read(key: _deviceIdKey);
+    if (cached != null && cached.isNotEmpty) {
+      _deviceId = cached;
+      unawaited(_refreshPlatformId(cached));
+      return cached;
     }
 
-    if (cached != null && cached.isNotEmpty) return cached;
+    final platformId = await _readPlatformId();
+    if (platformId != null) {
+      await _storage.write(key: _deviceIdKey, value: platformId);
+      return _deviceId = platformId;
+    }
 
     final fallback = _uuid.v4();
     await _storage.write(key: _deviceIdKey, value: fallback);
-    return fallback;
+    return _deviceId = fallback;
   }
 
-  Future<void> clear() => _storage.delete(key: _tokenKey);
+  Future<void> _refreshPlatformId(String cached) async {
+    final platformId = await _readPlatformId();
+    if (platformId == null || platformId == cached) return;
+    _deviceId = platformId;
+    await _storage.write(key: _deviceIdKey, value: platformId);
+  }
+
+  Future<String?> _readPlatformId() async {
+    try {
+      final udid = await FlutterUdid.consistentUdid.timeout(const Duration(seconds: 2));
+      final trimmed = udid.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> clear() async {
+    _token = null;
+    _tokenLoaded = true;
+    await _storage.delete(key: _tokenKey);
+  }
 }

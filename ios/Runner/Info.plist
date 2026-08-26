@@ -45,9 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Dire Express shares your GPS so brokers and customers can track active trips.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Dire Express shares your GPS so brokers and customers can track active trips.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Dire Express shares your GPS so brokers and customers can track active trips.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Dire Express uses the camera for profile photos and proof of delivery.</string>

@@ -9,7 +9,7 @@ class AppLocalizationsAm extends AppLocalizations {
   AppLocalizationsAm([String locale = 'am']) : super(locale);
 
   @override
-  String get brandName => 'ዲሬ ኤክስፕረስ';
+  String get brandName => 'ድሬ ኤክስፕረስ';
 
   @override
   String get languageLabel => 'ቋንቋ';
@@ -45,7 +45,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get navRequest => 'ጠይቅ';
 
   @override
-  String get navTrack => 'ከታተል';
+  String get navTrack => 'ተከታተል';
 
   @override
   String get headerGoBack => 'ተመለስ';
@@ -62,7 +62,7 @@ class AppLocalizationsAm extends AppLocalizations {
   }
 
   @override
-  String get roleBroker => 'ደላላ';
+  String get roleBroker => 'ወኪል';
 
   @override
   String get roleDriver => 'ሹፌር';
@@ -89,6 +89,9 @@ class AppLocalizationsAm extends AppLocalizations {
   String get commonCancel => 'ሰርዝ';
 
   @override
+  String get commonContinue => 'ቀጥል';
+
+  @override
   String get commonSave => 'አስቀምጥ';
 
   @override
@@ -101,17 +104,17 @@ class AppLocalizationsAm extends AppLocalizations {
   String get commonNoNotifications => 'እስካሁን ማሳወቂያ የለም።';
 
   @override
-  String get landingBadge => 'ዲጂታል የጭነት ደላላ';
+  String get landingBadge => 'ዲጂታል የጭነት ወኪል';
 
   @override
   String get landingTitle => 'እያንዳንዱ ጭነት፣ እያንዳንዱ ሹፌር፣ አንድ ቀጥተኛ እይታ።';
 
   @override
   String get landingCopy =>
-      'ዲሬ ኤክስፕረስ ደላሎችን፣ ሹፌሮችን እና ላኪዎችን በአንድ የሞባይል መድረክ ያገናኛል — ከጭነት ቦታ ማስያዝ እስከ በዶክ ላይ መፈረም።';
+      'ድሬ ኤክስፕረስ ደላሎችን፣ ሹፌሮችን እና ላኪዎችን በአንድ የሞባይል መድረክ ያገናኛል — ከጭነት ቦታ ማስያዝ እስከ ጭነቱን ወደታቀደለት መዳረሻ መድረሱን ማረጋገጫ እስከመስጠት ይጠቀሙበታል።';
 
   @override
-  String get landingCta => 'ጭነት ማንቀሳቀስ ጀምር';
+  String get landingCta => 'ተመዝገብ';
 
   @override
   String get landingSignIn => 'ግባ';
@@ -126,14 +129,13 @@ class AppLocalizationsAm extends AppLocalizations {
   String get landingBookTitle => 'ያስይዙ';
 
   @override
-  String get landingBookCopy => 'ደንበኛ መጓጓዣ ይጠይቃል፣ ወይም ደላላ ጭነቱን በቀጥታ ይፈጥራል።';
+  String get landingBookCopy => 'ደንበኛ መጓጓዣ ይጠይቃል፣ ወይም ወኪል ጭነቱን በቀጥታ ይፈጥራል።';
 
   @override
   String get landingDispatchTitle => 'ይላኩ';
 
   @override
-  String get landingDispatchCopy =>
-      'ደላላው ሹፌር ይመድባል፣ ሹፌሩም ከስልኩ ተቀብሎ ጉዞውን ይጀምራል።';
+  String get landingDispatchCopy => 'ወኪል ሹፌር ይመድባል፣ ሹፌሩም ከስልኩ ተቀብሎ ጉዞውን ይጀምራል።';
 
   @override
   String get landingDeliverTitle => 'ያድርሱ';
@@ -149,13 +151,13 @@ class AppLocalizationsAm extends AppLocalizations {
   String get loginSubtitle => 'ጭነቶችዎን ለማስተዳደር ይግቡ።';
 
   @override
-  String get loginEmail => 'ኢሜይል';
+  String get loginEmail => 'ኢሜይል ወይም ስልክ';
 
   @override
   String get loginPassword => 'የይለፍ ቃል';
 
   @override
-  String get loginEmailPlaceholder => 'you@gmail.com';
+  String get loginEmailPlaceholder => 'you@gmail.com or 0912345678';
 
   @override
   String get loginSubmit => 'ግባ';
@@ -236,10 +238,10 @@ class AppLocalizationsAm extends AppLocalizations {
   String get registerSignIn => 'ግባ';
 
   @override
-  String get registerAgentId => 'የወኪል መታወቂያ';
+  String get registerAgentId => 'የወኪል ቁጥር';
 
   @override
-  String get registerAgentIdPlaceholder => 'የደላላውን የወኪል መታወቂያ ይለጥፉ';
+  String get registerAgentIdPlaceholder => 'የወኪሉን የወኪል ቁጥር ይለጥፉ';
 
   @override
   String get profileTitle => 'መገለጫ';
@@ -254,10 +256,10 @@ class AppLocalizationsAm extends AppLocalizations {
   String get profileRole => 'ሚና';
 
   @override
-  String get profileAgentId => 'የወኪል መታወቂያ';
+  String get profileAgentId => 'የወኪል ቁጥር';
 
   @override
-  String get profileAgentIdCopied => 'የወኪል መታወቂያ ተቀድቷል';
+  String get profileAgentIdCopied => 'የወኪል ቁጥር ተቀድቷል';
 
   @override
   String get profileSignOut => 'ውጣ';
@@ -323,7 +325,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get loadDropoff => 'ማውረጃ';
 
   @override
-  String get trackBooked => 'ተያዘ';
+  String get trackBooked => 'ተፈቅዷል';
 
   @override
   String get trackRequestReceived => 'ጥያቄ ተቀብሏል';
@@ -372,7 +374,10 @@ class AppLocalizationsAm extends AppLocalizations {
   }
 
   @override
-  String get toastInvalidCredentials => 'ልክ ያልሆነ ኢሜይል ወይም የይለፍ ቃል';
+  String get toastInvalidCredentials => 'ልክ ያልሆነ ኢሜይል፣ ስልክ ወይም የይለፍ ቃል';
+
+  @override
+  String get toastRoleMismatch => 'ይህ መለያ ከተመረጠው ሚና ጋር አይዛመድም።';
 
   @override
   String get toastConnectionFailed =>
@@ -382,26 +387,48 @@ class AppLocalizationsAm extends AppLocalizations {
   String get toastRegistrationFailed => 'ምዝገባ አልተሳካም';
 
   @override
+  String get toastPhoneRequired => 'ትክክለኛ ስልክ ቁጥር ያስገቡ';
+
+  @override
+  String get toastReferredByNotFound => 'ያ የሪፈራል ኢሜይል አልተገኘም';
+
+  @override
+  String get toastNameRequired => 'ሙሉ ስምዎን ያስገቡ';
+
+  @override
+  String get toastPasswordTooShort => 'የይለፍ ቃል ቢያንስ 6 ቁምፊ መሆን አለበት';
+
+  @override
   String get toastAccountCreated => 'መለያ ተፈጥሯል';
 
   @override
   String get toastEmailRegistered => 'ኢሜይል አስቀድሞ ተመዝግቧል';
 
   @override
+  String get toastInvalidEmail => 'ትክክለኛ ኢሜይል ያስገቡ';
+
+  @override
+  String get toastPhoneRegistered => 'ስልክ ቁጥር አስቀድሞ ተመዝግቧል';
+
+  @override
   String get toastInvalidPhone =>
       'ትክክለኛ ስልክ ቁጥር ያስገቡ (ለምሳሌ 0912345678፣ 0712345678፣ +25377XXXXXX ወይም +2917XXXXXX)';
 
   @override
-  String get toastAgentIdRequired => 'የወኪል መታወቂያ ያስፈልጋል';
+  String get toastAgentIdRequired => 'የወኪል ቁጥር ያስፈልጋል';
 
   @override
-  String get toastAgentIdInvalid => 'ይህ የወኪል መታወቂያ ትክክል አይደለም';
+  String get toastPlateRequired => 'የታርጋ ቁጥር ያስፈልጋል';
+
+  @override
+  String get toastAgentIdInvalid => 'ይህ የወኪል ቁጥር ትክክል አይደለም';
 
   @override
   String get toastSelectCustomer => 'ለመቀጠል ደንበኛ ይምረጡ';
 
   @override
-  String get toastPickupDeliveryRequired => 'መውሰጃ፣ ማድረሻ እና የመውሰጃ ቀን ያስፈልጋሉ';
+  String get toastPickupDeliveryRequired =>
+      'መውሰጃ፣ ማድረሻ፣ የመውሰጃ ቀን እና የጭነት መግለጫ ያስፈልጋሉ';
 
   @override
   String get toastCreateLoadFailed => 'ጭነት መፍጠር አልተሳካም';
@@ -410,7 +437,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get toastLoadCreated => 'ጭነት ተፈጥሯል';
 
   @override
-  String get toastReceiptRequired => 'ተጨማሪ ጭነቶችን ለመፍጠር የክፍያ ደረሰኝ ይስቀሉ';
+  String get toastReceiptRequired => 'ተጨማሪ ጭነቶችን ለመፍጠር የክፍያ ደረሰኝ ያያይዙ';
 
   @override
   String get toastReceiptUploaded => 'ደረሰኝ ተሰቅሏል';
@@ -424,7 +451,7 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get brokerPaymentReceiptHint =>
-      'ነፃ ጭነቶችዎን ተጠቅመዋል። ለመቀጠል የክፍያ ደረሰኝ ይስቀሉ።';
+      'ነፃ ጭነቶችዎን ተጠቅመዋል። ለመቀጠል የክፍያ ደረሰኝ ያያይዙ';
 
   @override
   String get brokerUploadReceipt => 'ደረሰኝ ስቀል';
@@ -434,6 +461,12 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get toastAssignFailed => 'ሹፌር መመደብ አልተሳካም';
+
+  @override
+  String get toastAssignWaitingPayment => 'ይህ ጭነት የክፍያ ማጽደቅ በመጠበቅ ላይ ነው።';
+
+  @override
+  String get toastCannotChangeDriver => 'ሹፌሩ ከተቀበለ በኋላ መቀየር አይቻልም።';
 
   @override
   String get toastDriverAssigned => 'ሹፌር ተመድቧል';
@@ -464,6 +497,9 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get toastPodSubmitFailed => 'የማድረስ ማስረጃ ማስገባት አልተሳካም';
+
+  @override
+  String get podFarFromDelivery => 'ከሚጠበቀው የማድረሻ ቦታ ከ 1 ኪ.ሜ በላይ ርቀት ላይ ነዎት።';
 
   @override
   String get toastPhotoUploaded => 'ፎቶ ተሰቅሏል';
@@ -499,10 +535,10 @@ class AppLocalizationsAm extends AppLocalizations {
   String get mapCollapse => 'ካርታውን አሳንስ';
 
   @override
-  String get brokerDashboardTitle => 'የደላላ ዳሽቦርድ';
+  String get brokerDashboardTitle => 'የወኪል ዳሽቦርድ';
 
   @override
-  String get brokerProfileNotFound => 'የደላላ መገለጫ አልተገኘም።';
+  String get brokerProfileNotFound => 'የወኪል መገለጫ አልተገኘም።';
 
   @override
   String get brokerTotalRevenue => 'ጠቅላላ ገቢ';
@@ -603,6 +639,39 @@ class AppLocalizationsAm extends AppLocalizations {
   String get brokerConfirmRate => 'ዋጋ';
 
   @override
+  String get systemPrice => 'የስርዓት ዋጋ';
+
+  @override
+  String systemPriceBreakdown(String base, String km, String perKm) {
+    return '$base + $km ኪ.ሜ × $perKm';
+  }
+
+  @override
+  String get systemPriceCalculating => 'የስርዓት ዋጋ በማስላት ላይ...';
+
+  @override
+  String get systemPriceUnavailable =>
+      'ርቀት ማስላት አልተቻለም። አድራሻዎቹን ያረጋግጡና እንደገና ይሞክሩ።';
+
+  @override
+  String get systemPriceRetry => 'እንደገና ሞክር';
+
+  @override
+  String systemPriceBaseFallback(String amount) {
+    return 'ርቀት አልተገኘም። የመሠረት ክፍያ $amount ይከፈላል።';
+  }
+
+  @override
+  String brokerFreeLoadsRemaining(int remaining, int limit) {
+    return '$remaining ከ $limit ነፃ ጭነቶች ቀርተዋል';
+  }
+
+  @override
+  String brokerPaymentReceiptHintAmount(String amount) {
+    return 'ነፃ ጭነቶችዎን ተጠቅመዋል። $amount ይክፈሉና የክፍያ ደረሰኝ ያያይዙ።';
+  }
+
+  @override
   String get brokerConfirmPickup => 'መውሰጃ';
 
   @override
@@ -646,6 +715,9 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get brokerAssignDriver => 'ሹፌር መድብ';
+
+  @override
+  String get brokerChangeDriver => 'ሹፌር ቀይር';
 
   @override
   String get brokerNoDrivers => 'ምንም የሚገኝ ሹፌር የለም።';
@@ -729,7 +801,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get driverEmptyAvailable => 'ምላሽ የሚጠብቅ ጭነት የለም';
 
   @override
-  String get driverEmptyAvailableHint => 'ከደላላዎ አዲስ ምደባዎች እዚህ ይታያሉ።';
+  String get driverEmptyAvailableHint => 'ከወኪልዎ አዲስ ምደባዎች እዚህ ይታያሉ።';
 
   @override
   String get driverEmptyTrips => 'እስካሁን ጉዞ የለም';
@@ -800,7 +872,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get driverGpsActive => 'የጂፒኤስ ክትትል ንቁ ነው';
 
   @override
-  String get driverGpsHint => 'አካባቢዎ ከደላላው እና ከደንበኛው ጋር ይጋራል።';
+  String get driverGpsHint => 'አካባቢዎ ከወኪሉ እና ከደንበኛው ጋር ይጋራል።';
 
   @override
   String get driverUploading => 'በመስቀል ላይ...';
@@ -845,7 +917,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get driverGpsUnavailable => 'በዚህ መሣሪያ ላይ የአካባቢ አገልግሎቶች አይገኙም።';
 
   @override
-  String get driverGpsDenied => 'የአካባቢ ፈቃድ ተከልክሏል። ደላላው ይህን ጉዞ እንዲከታተል ያንቁት።';
+  String get driverGpsDenied => 'የአካባቢ ፈቃድ ተከልክሏል። ልው ይህን ጉዞ እንዲከታተል ያንቁት።';
 
   @override
   String driverGpsReadFailed(String message) {
@@ -883,13 +955,14 @@ class AppLocalizationsAm extends AppLocalizations {
   String get customerNotesPlaceholder => 'በማድረሻ ሊፍትጌት ያስፈልጋል';
 
   @override
-  String get customerTrackTitle => 'ጭነቶችን ከታተል';
+  String get customerTrackTitle => 'ጭነቶችን ተከታተል';
 
   @override
   String get customerTrackEmpty => 'በሂደት ላይ ያለ ጭነት የለም';
 
   @override
-  String get customerTrackEmptyHint => 'በደላላዎ የተፈጠሩ ጭነቶች ለቀጥተኛ ክትትል እዚህ ይታያሉ።';
+  String get customerTrackEmptyHint =>
+      'ጭነት ይጠይቁ ወይም ወኪልዎ እንዲፈጥር ይጠብቁ። ንቁ ጭነቶች ለቀጥተኛ ክትትል እዚህ ይታያሉ።';
 
   @override
   String get customerRequestTransport => 'መጓጓዣ ጠይቅ';
@@ -903,7 +976,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get customerAwaitingDriver => 'የሹፌር ምደባ በመጠባበቅ ላይ';
 
   @override
-  String get customerTrackDetailTitle => 'ጭነቶችን ከታተል';
+  String get customerTrackDetailTitle => 'ጭነቶችን ተከታተል';
 
   @override
   String get customerTrackLoading => 'ጭነት በመጫን ላይ...';

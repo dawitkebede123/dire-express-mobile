@@ -11,7 +11,6 @@ import '../../shared/widgets/app_header.dart';
 import '../../theme/app_theme.dart';
 import '../maps/trip_map.dart';
 import '../notifications/pusher_service.dart';
-import 'gps_service.dart';
 
 class DriverActiveScreen extends ConsumerStatefulWidget {
   const DriverActiveScreen({super.key});
@@ -24,7 +23,6 @@ class _DriverActiveScreenState extends ConsumerState<DriverActiveScreen> {
   FreightLoad? _load;
   var _loading = true;
   LatLng? _driverPoint;
-  final _gps = GpsService();
   late final PusherHandler _handler;
 
   @override
@@ -48,7 +46,6 @@ class _DriverActiveScreenState extends ConsumerState<DriverActiveScreen> {
       pusherService.unsubscribe('load-${_load!.id}', 'status-update', _handler);
       pusherService.unsubscribe('load-${_load!.id}', 'location-update', _handler);
     }
-    _gps.stop();
     super.dispose();
   }
 
@@ -67,13 +64,6 @@ class _DriverActiveScreenState extends ConsumerState<DriverActiveScreen> {
       if (active != null) {
         pusherService.subscribe('load-${active.id}', 'status-update', _handler);
         pusherService.subscribe('load-${active.id}', 'location-update', _handler);
-        final err = await _gps.start(api: ref.read(apiClientProvider), loadId: active.id);
-        if (err != null && mounted) {
-          final l10n = AppLocalizations.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(err == 'denied' ? l10n.driverGpsDenied : l10n.driverGpsUnavailable)),
-          );
-        }
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);

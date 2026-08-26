@@ -133,7 +133,7 @@ class _TripMapState extends State<TripMap> {
                 urlTemplate:
                     'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}@2x?access_token={accessToken}',
                 additionalOptions: {'accessToken': AppConfig.mapboxToken},
-                userAgentPackageName: 'com.direexpress.dire_express',
+                userAgentPackageName: 'com.direexpress.app',
               ),
               if (line.length >= 2)
                 PolylineLayer(

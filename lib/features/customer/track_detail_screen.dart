@@ -9,6 +9,7 @@ import '../../models/load.dart';
 import '../../shared/format.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/person_avatar.dart';
+import '../../shared/widgets/pod_documents.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../../shared/widgets/tracking_timeline.dart';
 import '../../theme/app_theme.dart';
@@ -129,6 +130,8 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
                 _kv(l10n.customerEstArrival, load.deliveryDate != null ? formatDateTime(load.deliveryDate!, locale) : l10n.customerScheduling),
                 _kv(l10n.customerFrom, load.pickupAddress),
                 _kv(l10n.customerTo, load.deliveryAddress),
+                if (load.systemPrice != null)
+                  _kv(l10n.systemPrice, formatSystemPrice(l10n, locale, load.systemPrice!, load.distanceKm)),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -162,6 +165,10 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
               ],
             ),
           ),
+          if (load.proofOfDelivery != null) ...[
+            const SizedBox(height: 12),
+            PodDocuments(pod: load.proofOfDelivery!),
+          ],
         ],
       ),
       bottomNavigationBar: Material(

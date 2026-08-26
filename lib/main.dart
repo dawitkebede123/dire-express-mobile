@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_router.dart';
 import 'core/config.dart';
 import 'core/locale_controller.dart';
+import 'features/driver/gps_service.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/app_theme.dart';
 
@@ -20,6 +21,7 @@ class DireExpressApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final locale = ref.watch(localeControllerProvider);
+    ref.watch(driverLocationControllerProvider.notifier);
 
     return MaterialApp.router(
       title: 'Dire Express',

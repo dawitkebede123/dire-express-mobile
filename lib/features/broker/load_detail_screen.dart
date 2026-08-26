@@ -4,13 +4,13 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
-import '../../core/config.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
 import '../../models/user.dart';
 import '../../shared/format.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/person_avatar.dart';
+import '../../shared/widgets/pod_documents.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../../shared/widgets/tracking_timeline.dart';
 import '../../theme/app_theme.dart';
@@ -68,8 +68,23 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
     } catch (_) {}
   }
 
+  bool _isCurrentDriver(NamedPerson driver, NamedPerson? assigned) {
+    if (assigned == null) return false;
+    final email = assigned.email?.trim();
+    final phone = assigned.phone?.trim();
+    final driverEmail = driver.email?.trim();
+    final driverPhone = driver.phone?.trim();
+    if (email != null && email.isNotEmpty && email == driverEmail) return true;
+    if (phone != null && phone.isNotEmpty && phone == driverPhone) return true;
+    if ((email == null || email.isEmpty) && (phone == null || phone.isEmpty)) {
+      return assigned.name.isNotEmpty && assigned.name == driver.name;
+    }
+    return false;
+  }
+
   Future<void> _assign() async {
     final l10n = AppLocalizations.of(context);
+    final assigned = _load?.driver;
     final drivers = await ref.read(apiClientProvider).listDrivers();
     if (!mounted) return;
     final selected = await showModalBottomSheet<String>(
@@ -80,20 +95,22 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
           return Padding(padding: const EdgeInsets.all(24), child: Text(l10n.brokerNoDrivers));
         }
         return ListView(
-          children: drivers
-              .map(
-                (d) => ListTile(
-                  leading: PersonAvatar(
-                    imageUrl: d.user.imageUrl,
-                    name: d.user.name,
-                    fallbackIcon: Icons.local_shipping,
-                  ),
-                  title: Text(d.user.name),
-                  subtitle: Text(d.vehicleType ?? l10n.brokerNoVehicleInfo),
-                  onTap: () => Navigator.pop(context, d.id),
-                ),
-              )
-              .toList(),
+          children: drivers.map((d) {
+            final current = _isCurrentDriver(d.user, assigned);
+            return ListTile(
+              enabled: !current,
+              leading: PersonAvatar(
+                imageUrl: d.user.imageUrl,
+                name: d.user.name,
+                fallbackIcon: Icons.local_shipping,
+              ),
+              title: Text(d.user.name),
+              subtitle: Text(
+                current ? l10n.brokerAssignedDriver : (d.vehicleType ?? l10n.brokerNoVehicleInfo),
+              ),
+              onTap: current ? null : () => Navigator.pop(context, d.id),
+            );
+          }).toList(),
         );
       },
     );
@@ -103,6 +120,15 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
       if (!mounted) return;
       setState(() => _load = updated);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDriverAssigned)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      final detail = '${e.code ?? ''} ${e.message}'.toLowerCase();
+      final message = e.code == 'cannotChangeDriver'
+          ? l10n.toastCannotChangeDriver
+          : detail.contains('payment approval')
+              ? l10n.toastAssignWaitingPayment
+              : l10n.toastAssignFailed;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastAssignFailed)));
@@ -123,7 +149,8 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
 
     final pickup = load.pickupLat != null && load.pickupLng != null ? LatLng(load.pickupLat!, load.pickupLng!) : null;
     final delivery = load.deliveryLat != null && load.deliveryLng != null ? LatLng(load.deliveryLat!, load.deliveryLng!) : null;
-    final canAssign = const {'PENDING', 'CREATED', 'REJECTED'}.contains(load.status);
+    final canAssign = const {'PENDING', 'CREATED', 'REJECTED', 'ASSIGNED'}.contains(load.status);
+    final hasDriver = load.driver != null && load.driver!.name.isNotEmpty;
 
     return Scaffold(
       appBar: AppHeader(title: l10n.brokerLoadDetailTitle, showBack: true, notificationsPath: '/broker/notifications', profilePath: '/broker/profile'),
@@ -144,6 +171,8 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
                 _row(l10n.brokerConfirmDelivery, load.deliveryAddress),
                 _row(l10n.brokerConfirmPickupDate, formatDateTime(load.pickupDate, locale)),
                 _row(l10n.brokerConfirmRate, load.rate == null ? l10n.loadRateTbd : formatCurrency(load.rate, locale)),
+                if (load.systemPrice != null)
+                  _row(l10n.systemPrice, formatSystemPrice(l10n, locale, load.systemPrice!, load.distanceKm)),
                 _row(l10n.brokerConfirmEquipment, equipmentLabel(l10n, load.equipmentType)),
                 _row(l10n.brokerConfirmWeight, formatWeight(load.weightLbs, l10n) ?? '—'),
               ],
@@ -155,21 +184,7 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
           _PersonCard(title: l10n.brokerDriver, person: load.driver, subtitle: load.driverVehicle ?? l10n.brokerAssignedDriver),
           if (load.proofOfDelivery != null) ...[
             const SizedBox(height: 12),
-            _Card(
-              title: l10n.brokerProofOfDelivery,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.brokerDeliveryPhoto, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-                  const SizedBox(height: 6),
-                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(AppConfig.resolveMediaUrl(load.proofOfDelivery!.photoUrl) ?? load.proofOfDelivery!.photoUrl, height: 160, width: double.infinity, fit: BoxFit.cover)),
-                  const SizedBox(height: 12),
-                  Text(l10n.brokerRecipientSignature, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-                  const SizedBox(height: 6),
-                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(AppConfig.resolveMediaUrl(load.proofOfDelivery!.signatureUrl) ?? load.proofOfDelivery!.signatureUrl, height: 120, width: double.infinity, fit: BoxFit.contain)),
-                ],
-              ),
-            ),
+            PodDocuments(pod: load.proofOfDelivery!),
           ],
         ],
       ),
@@ -183,7 +198,7 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: FilledButton(
                     onPressed: _assign,
-                    child: Text(l10n.brokerAssignDriver),
+                    child: Text(hasDriver ? l10n.brokerChangeDriver : l10n.brokerAssignDriver),
                   ),
                 ),
               ),

@@ -12,6 +12,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
 import '../../shared/format.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/pod_documents.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../../theme/app_theme.dart';
 import '../maps/trip_map.dart';
@@ -58,7 +59,6 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
     _recipient.dispose();
     _notes.dispose();
     _signature.dispose();
-    _gps.stop();
     super.dispose();
   }
 
@@ -66,9 +66,6 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
     try {
       final load = await ref.read(apiClientProvider).getLoad(widget.loadId);
       if (mounted) setState(() => _load = load);
-      if (load.status == 'IN_TRANSIT') {
-        await _gps.start(api: ref.read(apiClientProvider), loadId: load.id);
-      }
     } catch (_) {}
   }
 
@@ -87,7 +84,7 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
       };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       if (action == 'start') {
-        await _gps.start(api: ref.read(apiClientProvider), loadId: widget.loadId);
+        await ref.read(driverLocationControllerProvider.notifier).includeLoad(widget.loadId);
       }
     } catch (_) {
       if (!mounted) return;
@@ -118,25 +115,36 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
     }
   }
 
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  Future<String> _uploadSignature() async {
+    final bytes = await _signature.toPngBytes();
+    if (bytes == null) throw Exception('empty');
+    final file = File('${Directory.systemTemp.path}/signature-${DateTime.now().millisecondsSinceEpoch}.png');
+    await file.writeAsBytes(bytes);
+    return ref.read(apiClientProvider).uploadFile(file.path, kind: 'signature');
+  }
+
   Future<void> _saveSignature() async {
     final l10n = AppLocalizations.of(context);
     if (_signature.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastSignBeforeSaving)));
+      _toast(l10n.toastSignBeforeSaving);
       return;
     }
     setState(() => _busy = true);
     try {
-      final bytes = await _signature.toPngBytes();
-      if (bytes == null) throw Exception('empty');
-      final file = File('${Directory.systemTemp.path}/signature-${DateTime.now().millisecondsSinceEpoch}.png');
-      await file.writeAsBytes(bytes);
-      final url = await ref.read(apiClientProvider).uploadFile(file.path, kind: 'signature');
+      final url = await _uploadSignature();
       if (!mounted) return;
       setState(() => _signatureUrl = url);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastSignatureCaptured)));
+      _toast(l10n.toastSignatureCaptured);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastUploadFailed)));
+      _toast(l10n.toastUploadFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -144,25 +152,59 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
 
   Future<void> _submitPod() async {
     final l10n = AppLocalizations.of(context);
-    if (_photoUrl == null || _signatureUrl == null || _recipient.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastPodFieldsRequired)));
+    if (_photoUrl == null ||
+        _recipient.text.trim().isEmpty ||
+        (_signatureUrl == null && _signature.isEmpty)) {
+      _toast(l10n.toastPodFieldsRequired);
       return;
+    }
+    final destLat = _load?.deliveryLat;
+    final destLng = _load?.deliveryLng;
+    if (destLat != null && destLng != null) {
+      final meters = await _gps.distanceMetersTo(destLat, destLng);
+      if (meters != null && meters > 1000) {
+        if (!mounted) return;
+        final proceed = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                content: Text(l10n.podFarFromDelivery),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(l10n.commonCancel),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text(l10n.commonContinue),
+                  ),
+                ],
+              ),
+            ) ??
+            false;
+        if (!proceed) return;
+      }
     }
     setState(() => _busy = true);
     try {
+      var signatureUrl = _signatureUrl;
+      if (signatureUrl == null) {
+        signatureUrl = await _uploadSignature();
+        if (!mounted) return;
+        setState(() => _signatureUrl = signatureUrl);
+      }
       await ref.read(apiClientProvider).submitPod(
             widget.loadId,
             photoUrl: _photoUrl!,
-            signatureUrl: _signatureUrl!,
+            signatureUrl: signatureUrl,
             recipientName: _recipient.text.trim(),
             notes: _notes.text.trim(),
           );
       if (!mounted) return;
       setState(() => _submitted = true);
-      await _gps.stop();
+      await ref.read(driverLocationControllerProvider.notifier).sync();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastPodSubmitFailed)));
+      _toast(l10n.toastPodSubmitFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -198,10 +240,11 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
       );
     }
 
+    final inTransit = load.status == 'IN_TRANSIT';
     return Scaffold(
       appBar: AppHeader(title: load.referenceNo, showBack: true, notificationsPath: '/driver/notifications', profilePath: '/driver/profile'),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, inTransit ? 24 : 16),
         children: [
           Row(children: [StatusChip(status: load.status), const Spacer(), Text(load.rate == null ? l10n.loadRateTbd : formatCurrency(load.rate, locale), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20))]),
           const SizedBox(height: 12),
@@ -215,6 +258,10 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
           const SizedBox(height: 12),
           Text('${l10n.driverDestination}: ${load.deliveryAddress}'),
           Text('${l10n.driverConsignee}: ${load.customer?.name ?? '—'}'),
+          if (load.proofOfDelivery != null) ...[
+            const SizedBox(height: 16),
+            PodDocuments(pod: load.proofOfDelivery!),
+          ],
           const SizedBox(height: 16),
           if (load.status == 'ASSIGNED')
             Row(children: [
@@ -252,10 +299,19 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
             const SizedBox(height: 16),
             Text(l10n.driverReceiverSignature, style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            Container(
+            SizedBox(
               height: 140,
-              decoration: BoxDecoration(border: Border.all(color: AppColors.outlineVariant), borderRadius: BorderRadius.circular(12)),
-              child: Signature(controller: _signature, backgroundColor: Colors.white),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: AppColors.outlineVariant),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Signature(controller: _signature, backgroundColor: Colors.white),
+                ),
+              ),
             ),
             Align(
               alignment: Alignment.centerRight,
@@ -263,14 +319,28 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
             ),
             OutlinedButton(onPressed: _busy ? null : _saveSignature, child: Text(_signatureUrl == null ? l10n.driverSignHere : l10n.toastSignatureCaptured)),
             const SizedBox(height: 12),
-            TextField(controller: _recipient, decoration: InputDecoration(labelText: l10n.driverRecipientName, hintText: l10n.driverRecipientPlaceholder)),
+            TextField(controller: _recipient, decoration: InputDecoration(labelText: l10n.driverRecipientName)),
             const SizedBox(height: 12),
-            TextField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: l10n.driverDeliveryNotes, hintText: l10n.driverNotesPlaceholder)),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: _busy ? null : _submitPod, child: Text(_busy ? l10n.driverProcessing : l10n.driverSubmitPod)),
+            TextField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: l10n.driverDeliveryNotes)),
           ],
         ],
       ),
+      bottomNavigationBar: inTransit
+          ? Material(
+              color: AppColors.background,
+              elevation: 8,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: FilledButton(
+                    onPressed: _busy ? null : _submitPod,
+                    child: Text(_busy ? l10n.driverProcessing : l10n.driverSubmitPod),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

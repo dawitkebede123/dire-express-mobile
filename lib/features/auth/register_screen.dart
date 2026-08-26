@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
+import '../../core/phone.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/language_switcher.dart';
 import '../../shared/widgets/logo.dart';
@@ -43,42 +44,89 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _submit() async {
     final l10n = AppLocalizations.of(context);
-    final needsAgent = _role == 'DRIVER' || _role == 'CUSTOMER';
-    if (needsAgent && _agentId.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastAgentIdRequired)));
+    final name = _name.text.trim();
+    if (name.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastNameRequired)));
+      return;
+    }
+    if (_password.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastPasswordTooShort)));
       return;
     }
     final phone = normalizePhone(_phone.text);
-    if (phone == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastInvalidPhone)));
+    final phoneDigits = phone?.replaceAll(RegExp(r'\D'), '') ?? '';
+    if (phone == null || phoneDigits.length < 7) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastPhoneRequired)));
       return;
     }
+    final needsAgent = _role == 'DRIVER' || _role == 'CUSTOMER';
+    final agentId = _agentId.text.trim();
+    if (needsAgent && agentId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastAgentIdRequired)));
+      return;
+    }
+    if (needsAgent && !RegExp(r'^\d{6}$').hasMatch(agentId)) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastAgentIdInvalid)));
+      return;
+    }
+    final email = _email.text.trim();
+    if (email.isNotEmpty && !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastInvalidEmail)));
+      return;
+    }
+    final company = _company.text.trim();
+    final plate = _plate.text.trim();
+    final vehicle = _vehicle.text.trim();
     setState(() => _loading = true);
     try {
-      final user = await ref.read(authControllerProvider.notifier).register({
-        'name': _name.text.trim(),
-        'email': _email.text.trim(),
+      await ref.read(authControllerProvider.notifier).register({
+        'name': name,
         'password': _password.text,
         'phone': phone,
         'role': _role,
-        if (_role != 'DRIVER') 'company': _company.text.trim(),
-        if (_role == 'DRIVER') 'plateNo': _plate.text.trim(),
-        if (_role == 'DRIVER') 'vehicleType': _vehicle.text.trim(),
-        if (needsAgent) 'agentId': _agentId.text.trim(),
+        if (email.isNotEmpty) 'email': email,
+        if (needsAgent) 'agentId': agentId,
+        if (_role != 'DRIVER' && company.isNotEmpty) 'company': company,
+        if (_role == 'DRIVER' && plate.isNotEmpty) 'plateNo': plate,
+        if (_role == 'DRIVER' && vehicle.isNotEmpty) 'vehicleType': vehicle,
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastAccountCreated)));
-      context.go(user.homePath);
+    } on LoginAfterRegisterException catch (e) {
+      if (!mounted) return;
+      final cause = e.cause;
+      final status = cause.statusCode;
+      final msg = cause.message.toLowerCase();
+      final isAuthFailure = status == 400 ||
+          status == 401 ||
+          status == 403 ||
+          msg.contains('invalid email') ||
+          msg.contains('invalid credentials');
+      final message = cause.code == 'roleMismatch' || cause.message == 'roleMismatch'
+          ? l10n.toastRoleMismatch
+          : isAuthFailure
+              ? l10n.toastInvalidCredentials
+              : (cause.message.isNotEmpty ? cause.message : l10n.toastConnectionFailed);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      context.go('/login');
     } on ApiException catch (e) {
       if (!mounted) return;
       final code = e.code ?? e.message;
       final message = switch (code) {
-        'emailRegistered' => l10n.toastEmailRegistered,
+        'phoneRequired' => l10n.toastPhoneRequired,
         'agentIdRequired' => l10n.toastAgentIdRequired,
         'agentIdInvalid' => l10n.toastAgentIdInvalid,
+        'referredByNotFound' => l10n.toastReferredByNotFound,
+        'emailRegistered' => l10n.toastEmailRegistered,
+        'phoneRegistered' => l10n.toastPhoneRegistered,
+        'timeout' => l10n.toastConnectionFailed,
+        'registrationFailed' => l10n.toastRegistrationFailed,
         _ => l10n.toastRegistrationFailed,
       };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastRegistrationFailed)));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -159,18 +207,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     }).toList(),
                   ),
                   const SizedBox(height: 16),
-                  _Labeled(l10n.registerFullName, _name, l10n.registerNamePlaceholder),
-                  _Labeled(l10n.registerEmail, _email, l10n.registerEmailPlaceholder, email: true),
-                  _Labeled(l10n.registerPassword, _password, l10n.registerPasswordPlaceholder, obscure: true),
-                  _Labeled(l10n.registerPhone, _phone, l10n.registerPhonePlaceholder, phone: true),
+                  _Labeled(l10n.registerFullName, _name),
+                  _Labeled(l10n.registerEmail, _email, email: true),
+                  _Labeled(l10n.registerPassword, _password, obscure: true),
+                  _Labeled(l10n.registerPhone, _phone, phone: true),
                   if (_role != 'DRIVER')
-                    _Labeled(l10n.registerCompany, _company, l10n.registerCompanyPlaceholder),
+                    _Labeled(l10n.registerCompany, _company),
                   if (_role == 'DRIVER') ...[
-                    _Labeled(l10n.registerPlateNo, _plate, l10n.registerPlatePlaceholder),
-                    _Labeled(l10n.registerVehicleType, _vehicle, l10n.registerVehiclePlaceholder),
+                    _Labeled(l10n.registerPlateNo, _plate),
+                    _Labeled(l10n.registerVehicleType, _vehicle),
                   ],
                   if (_role == 'DRIVER' || _role == 'CUSTOMER')
-                    _Labeled(l10n.registerAgentId, _agentId, l10n.registerAgentIdPlaceholder),
+                    _Labeled(l10n.registerAgentId, _agentId),
                   const SizedBox(height: 8),
                   FilledButton(
                     onPressed: _loading ? null : _submit,
@@ -197,15 +245,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 }
 
-class _Labeled extends StatelessWidget {
-  const _Labeled(this.label, this.controller, this.hint, {this.email = false, this.obscure = false, this.phone = false});
+class _Labeled extends StatefulWidget {
+  const _Labeled(this.label, this.controller, {this.email = false, this.obscure = false, this.phone = false});
 
   final String label;
   final TextEditingController controller;
-  final String hint;
   final bool email;
   final bool obscure;
   final bool phone;
+
+  @override
+  State<_Labeled> createState() => _LabeledState();
+}
+
+class _LabeledState extends State<_Labeled> {
+  late var _hidden = widget.obscure;
 
   @override
   Widget build(BuildContext context) {
@@ -214,62 +268,27 @@ class _Labeled extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 6),
           TextField(
-            controller: controller,
-            obscureText: obscure,
-            keyboardType: phone
+            controller: widget.controller,
+            obscureText: _hidden,
+            keyboardType: widget.phone
                 ? TextInputType.phone
-                : email
+                : widget.email
                     ? TextInputType.emailAddress
                     : TextInputType.text,
-            decoration: InputDecoration(hintText: hint),
+            decoration: InputDecoration(
+              suffixIcon: widget.obscure
+                  ? IconButton(
+                      icon: Icon(_hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                      onPressed: () => setState(() => _hidden = !_hidden),
+                    )
+                  : null,
+            ),
           ),
         ],
       ),
     );
   }
-}
-
-/// Returns E.164, or null if invalid.
-String? normalizePhone(String raw) {
-  final compact = raw.trim().replaceAll(RegExp(r'[\s\-()]'), '');
-  if (compact.isEmpty) return null;
-
-  if (compact.startsWith('+')) {
-    final digits = compact.substring(1);
-    if (RegExp(r'^\d{8,15}$').hasMatch(digits)) return '+$digits';
-    return null;
-  }
-
-  if (RegExp(r'^09\d{8}$').hasMatch(compact)) {
-    return '+251${compact.substring(1)}';
-  }
-  if (RegExp(r'^9\d{8}$').hasMatch(compact)) {
-    return '+251$compact';
-  }
-  // Kenya Safaricom: 07XXXXXXXX, 011XXXXXXX (with leading 0)
-  if (RegExp(r'^07\d{8}$').hasMatch(compact) || RegExp(r'^011\d{7}$').hasMatch(compact)) {
-    return '+254${compact.substring(1)}';
-  }
-  // Kenya without leading 0: 7XXXXXXXX or 11XXXXXXX
-  if (RegExp(r'^7\d{8}$').hasMatch(compact) || RegExp(r'^11\d{7}$').hasMatch(compact)) {
-    return '+254$compact';
-  }
-  // Djibouti: 77XXXXXX or 077XXXXXX
-  if (RegExp(r'^77\d{6}$').hasMatch(compact)) {
-    return '+253$compact';
-  }
-  if (RegExp(r'^077\d{6}$').hasMatch(compact)) {
-    return '+253${compact.substring(1)}';
-  }
-  // Eritrea: 7XXXXXX or 07XXXXXX
-  if (RegExp(r'^7\d{6}$').hasMatch(compact)) {
-    return '+291$compact';
-  }
-  if (RegExp(r'^07\d{6}$').hasMatch(compact)) {
-    return '+291${compact.substring(1)}';
-  }
-  return null;
 }

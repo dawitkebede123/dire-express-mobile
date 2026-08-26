@@ -31,6 +31,7 @@
   "commonEmpty": "—",
   "commonRetry": "Retry",
   "commonCancel": "Cancel",
+  "commonContinue": "Continue",
   "commonSave": "Save",
   "commonEdit": "Edit",
   "commonMarkAllRead": "Mark all read",
@@ -52,9 +53,9 @@
 
   "loginTitle": "Welcome back",
   "loginSubtitle": "Sign in to manage your loads.",
-  "loginEmail": "Email",
+  "loginEmail": "Email or phone",
   "loginPassword": "Password",
-  "loginEmailPlaceholder": "you@gmail.com",
+  "loginEmailPlaceholder": "you@gmail.com or 0912345678",
   "loginSubmit": "Sign in",
   "loginSubmitting": "Signing in...",
   "loginNoAccount": "No account?",
@@ -136,16 +137,24 @@
   "weightLbs": "{n} lbs",
   "@weightLbs": { "placeholders": { "n": { "type": "String" } } },
 
-  "toastInvalidCredentials": "Invalid email or password",
+  "toastInvalidCredentials": "Invalid email, phone, or password",
+  "toastRoleMismatch": "This account does not match the selected role.",
   "toastConnectionFailed": "Could not reach the server. Check your connection and API URL.",
   "toastRegistrationFailed": "Registration failed",
+  "toastPhoneRequired": "Enter a valid phone number",
+  "toastReferredByNotFound": "That referral email was not found",
+  "toastNameRequired": "Enter your full name",
+  "toastPasswordTooShort": "Password must be at least 6 characters",
   "toastAccountCreated": "Account created",
   "toastEmailRegistered": "Email already registered",
+  "toastInvalidEmail": "Enter a valid email address",
+  "toastPhoneRegistered": "Phone number already registered",
   "toastInvalidPhone": "Enter a valid phone number (e.g. 0912345678, 0712345678, +25377XXXXXX, or +2917XXXXXX)",
   "toastAgentIdRequired": "Agent ID is required",
+  "toastPlateRequired": "Plate number is required",
   "toastAgentIdInvalid": "This Agent ID is not valid",
   "toastSelectCustomer": "Select a customer to continue",
-  "toastPickupDeliveryRequired": "Pickup, delivery, and pickup date are required",
+  "toastPickupDeliveryRequired": "Pickup, delivery, pickup date, and cargo description are required",
   "toastCreateLoadFailed": "Failed to create load",
   "toastLoadCreated": "Load created",
   "toastReceiptRequired": "Upload a payment receipt to create more loads",
@@ -156,6 +165,8 @@
   "brokerUploadReceipt": "Upload receipt",
   "brokerReceiptReady": "Receipt attached",
   "toastAssignFailed": "Failed to assign driver",
+  "toastAssignWaitingPayment": "This load is waiting for payment approval.",
+  "toastCannotChangeDriver": "The driver cannot be changed after they accept.",
   "toastDriverAssigned": "Driver assigned",
   "toastNewLoadUpdate": "New load update",
   "toastActionFailed": "Action failed",
@@ -166,6 +177,7 @@
   "toastSignatureCaptured": "Signature captured",
   "toastPodFieldsRequired": "Photo, signature, and recipient name are required",
   "toastPodSubmitFailed": "Failed to submit proof of delivery",
+  "podFarFromDelivery": "You are more than 1 km from the expected delivery location.",
   "toastPhotoUploaded": "Photo uploaded",
   "toastUploadFailed": "Upload failed",
   "toastRequestFailed": "Failed to submit request",
@@ -215,6 +227,37 @@
   "brokerConfirmEquipment": "Equipment",
   "brokerConfirmWeight": "Weight",
   "brokerConfirmRate": "Rate",
+  "systemPrice": "System price",
+  "systemPriceBreakdown": "{base} + {km} km × {perKm}",
+  "@systemPriceBreakdown": {
+    "placeholders": {
+      "base": { "type": "String" },
+      "km": { "type": "String" },
+      "perKm": { "type": "String" }
+    }
+  },
+  "systemPriceCalculating": "Calculating system price...",
+  "systemPriceUnavailable": "Could not calculate distance. Check the addresses and try again.",
+  "systemPriceRetry": "Retry",
+  "systemPriceBaseFallback": "Distance unavailable. Base fee of {amount} will be charged.",
+  "@systemPriceBaseFallback": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "brokerFreeLoadsRemaining": "{remaining} of {limit} free loads left",
+  "@brokerFreeLoadsRemaining": {
+    "placeholders": {
+      "remaining": { "type": "int" },
+      "limit": { "type": "int" }
+    }
+  },
+  "brokerPaymentReceiptHintAmount": "You have used your free loads. Pay {amount} and upload a payment receipt to continue.",
+  "@brokerPaymentReceiptHintAmount": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
   "brokerConfirmPickup": "Pickup",
   "brokerConfirmDelivery": "Delivery",
   "brokerConfirmPickupDate": "Pickup date",
@@ -231,6 +274,7 @@
 
   "brokerLoadDetailTitle": "Load Details",
   "brokerAssignDriver": "Assign Driver",
+  "brokerChangeDriver": "Change Driver",
   "brokerNoDrivers": "No available drivers.",
   "brokerNoVehicleInfo": "No vehicle info",
   "brokerShipmentStatus": "Shipment Status",
@@ -321,7 +365,7 @@
 
   "customerTrackTitle": "Track Shipments",
   "customerTrackEmpty": "No shipments in progress",
-  "customerTrackEmptyHint": "Shipments created by your broker appear here for live tracking.",
+  "customerTrackEmptyHint": "Request a shipment or wait for your broker to create one. Active loads appear here for live tracking.",
   "customerRequestTransport": "Request transport",
   "customerDriverName": "Driver: {name}",
   "@customerDriverName": { "placeholders": { "name": { "type": "String" } } },

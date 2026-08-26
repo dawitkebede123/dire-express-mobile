@@ -254,6 +254,12 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get commonCancel;
 
+  /// No description provided for @commonContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get commonContinue;
+
   /// No description provided for @commonSave.
   ///
   /// In en, this message translates to:
@@ -371,7 +377,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginEmail.
   ///
   /// In en, this message translates to:
-  /// **'Email'**
+  /// **'Email or phone'**
   String get loginEmail;
 
   /// No description provided for @loginPassword.
@@ -383,7 +389,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginEmailPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'you@gmail.com'**
+  /// **'you@gmail.com or 0912345678'**
   String get loginEmailPlaceholder;
 
   /// No description provided for @loginSubmit.
@@ -797,8 +803,14 @@ abstract class AppLocalizations {
   /// No description provided for @toastInvalidCredentials.
   ///
   /// In en, this message translates to:
-  /// **'Invalid email or password'**
+  /// **'Invalid email, phone, or password'**
   String get toastInvalidCredentials;
+
+  /// No description provided for @toastRoleMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'This account does not match the selected role.'**
+  String get toastRoleMismatch;
 
   /// No description provided for @toastConnectionFailed.
   ///
@@ -812,6 +824,30 @@ abstract class AppLocalizations {
   /// **'Registration failed'**
   String get toastRegistrationFailed;
 
+  /// No description provided for @toastPhoneRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid phone number'**
+  String get toastPhoneRequired;
+
+  /// No description provided for @toastReferredByNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That referral email was not found'**
+  String get toastReferredByNotFound;
+
+  /// No description provided for @toastNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your full name'**
+  String get toastNameRequired;
+
+  /// No description provided for @toastPasswordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 6 characters'**
+  String get toastPasswordTooShort;
+
   /// No description provided for @toastAccountCreated.
   ///
   /// In en, this message translates to:
@@ -824,6 +860,18 @@ abstract class AppLocalizations {
   /// **'Email already registered'**
   String get toastEmailRegistered;
 
+  /// No description provided for @toastInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address'**
+  String get toastInvalidEmail;
+
+  /// No description provided for @toastPhoneRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number already registered'**
+  String get toastPhoneRegistered;
+
   /// No description provided for @toastInvalidPhone.
   ///
   /// In en, this message translates to:
@@ -835,6 +883,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Agent ID is required'**
   String get toastAgentIdRequired;
+
+  /// No description provided for @toastPlateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate number is required'**
+  String get toastPlateRequired;
 
   /// No description provided for @toastAgentIdInvalid.
   ///
@@ -851,7 +905,7 @@ abstract class AppLocalizations {
   /// No description provided for @toastPickupDeliveryRequired.
   ///
   /// In en, this message translates to:
-  /// **'Pickup, delivery, and pickup date are required'**
+  /// **'Pickup, delivery, pickup date, and cargo description are required'**
   String get toastPickupDeliveryRequired;
 
   /// No description provided for @toastCreateLoadFailed.
@@ -914,6 +968,18 @@ abstract class AppLocalizations {
   /// **'Failed to assign driver'**
   String get toastAssignFailed;
 
+  /// No description provided for @toastAssignWaitingPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'This load is waiting for payment approval.'**
+  String get toastAssignWaitingPayment;
+
+  /// No description provided for @toastCannotChangeDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'The driver cannot be changed after they accept.'**
+  String get toastCannotChangeDriver;
+
   /// No description provided for @toastDriverAssigned.
   ///
   /// In en, this message translates to:
@@ -973,6 +1039,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to submit proof of delivery'**
   String get toastPodSubmitFailed;
+
+  /// No description provided for @podFarFromDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'You are more than 1 km from the expected delivery location.'**
+  String get podFarFromDelivery;
 
   /// No description provided for @toastPhotoUploaded.
   ///
@@ -1244,6 +1316,54 @@ abstract class AppLocalizations {
   /// **'Rate'**
   String get brokerConfirmRate;
 
+  /// No description provided for @systemPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'System price'**
+  String get systemPrice;
+
+  /// No description provided for @systemPriceBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'{base} + {km} km × {perKm}'**
+  String systemPriceBreakdown(String base, String km, String perKm);
+
+  /// No description provided for @systemPriceCalculating.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating system price...'**
+  String get systemPriceCalculating;
+
+  /// No description provided for @systemPriceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not calculate distance. Check the addresses and try again.'**
+  String get systemPriceUnavailable;
+
+  /// No description provided for @systemPriceRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get systemPriceRetry;
+
+  /// No description provided for @systemPriceBaseFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance unavailable. Base fee of {amount} will be charged.'**
+  String systemPriceBaseFallback(String amount);
+
+  /// No description provided for @brokerFreeLoadsRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{remaining} of {limit} free loads left'**
+  String brokerFreeLoadsRemaining(int remaining, int limit);
+
+  /// No description provided for @brokerPaymentReceiptHintAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'You have used your free loads. Pay {amount} and upload a payment receipt to continue.'**
+  String brokerPaymentReceiptHintAmount(String amount);
+
   /// No description provided for @brokerConfirmPickup.
   ///
   /// In en, this message translates to:
@@ -1333,6 +1453,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assign Driver'**
   String get brokerAssignDriver;
+
+  /// No description provided for @brokerChangeDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Driver'**
+  String get brokerChangeDriver;
 
   /// No description provided for @brokerNoDrivers.
   ///
@@ -1799,7 +1925,7 @@ abstract class AppLocalizations {
   /// No description provided for @customerTrackEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Shipments created by your broker appear here for live tracking.'**
+  /// **'Request a shipment or wait for your broker to create one. Active loads appear here for live tracking.'**
   String get customerTrackEmptyHint;
 
   /// No description provided for @customerRequestTransport.
