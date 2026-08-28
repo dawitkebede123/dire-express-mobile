@@ -6,27 +6,32 @@ import '../ethiopian_date.dart';
 Future<DateTime?> pickLoadDateTime(
   BuildContext context, {
   DateTime? initial,
+  DateTime? firstDate,
+  DateTime? lastDate,
 }) async {
   final now = DateTime.now();
-  final firstDate = now.subtract(const Duration(days: 1));
-  final lastDate = now.add(const Duration(days: 365));
+  final first = firstDate ?? now.subtract(const Duration(days: 1));
+  final last = lastDate ?? now.add(const Duration(days: 365));
   final locale = Localizations.localeOf(context);
+  var safeInitial = initial ?? now;
+  if (safeInitial.isBefore(first)) safeInitial = first;
+  if (safeInitial.isAfter(last)) safeInitial = last;
   DateTime? date;
   if (locale.languageCode == 'am') {
     date = await showDialog<DateTime>(
       context: context,
       builder: (context) => EthiopianDatePickerDialog(
-        initialDate: initial ?? now,
-        firstDate: firstDate,
-        lastDate: lastDate,
+        initialDate: safeInitial,
+        firstDate: first,
+        lastDate: last,
       ),
     );
   } else {
     date = await showDatePicker(
       context: context,
-      initialDate: initial ?? now,
-      firstDate: firstDate,
-      lastDate: lastDate,
+      initialDate: safeInitial,
+      firstDate: first,
+      lastDate: last,
     );
   }
   if (date == null || !context.mounted) return null;

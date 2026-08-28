@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:signature/signature.dart';
 
 import '../../core/api_client.dart';
+import '../../core/driver_position_cache.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
 import '../../shared/format.dart';
@@ -30,8 +32,10 @@ class DriverLoadDetailScreen extends ConsumerStatefulWidget {
 
 class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen> {
   FreightLoad? _load;
+  LatLng? _driverPoint;
   var _busy = false;
   var _submitted = false;
+  Timer? _driverPointTimer;
   XFile? _photo;
   String? _photoUrl;
   String? _signatureUrl;
@@ -46,27 +50,79 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
     super.initState();
     _handler = (_, data) {
       if (data['load'] is Map<String, dynamic>) {
-        setState(() => _load = FreightLoad.fromJson(data['load'] as Map<String, dynamic>));
+        final load = FreightLoad.fromJson(data['load'] as Map<String, dynamic>);
+        setState(() => _load = load);
+        unawaited(DriverPositionCache.instance.saveFromLoad(load));
+      }
+      final loc = data['location'];
+      if (loc is Map && loc['lat'] != null && loc['lng'] != null) {
+        setState(() => _driverPoint = LatLng((loc['lat'] as num).toDouble(), (loc['lng'] as num).toDouble()));
+        unawaited(DriverPositionCache.instance.saveFromEvent(widget.loadId, loc));
       }
     };
+    unawaited(_hydrateCache());
     _fetch();
     pusherService.subscribe('load-${widget.loadId}', 'status-update', _handler);
+    pusherService.subscribe('load-${widget.loadId}', 'location-update', _handler);
   }
 
   @override
   void dispose() {
+    _driverPointTimer?.cancel();
     pusherService.unsubscribe('load-${widget.loadId}', 'status-update', _handler);
+    pusherService.unsubscribe('load-${widget.loadId}', 'location-update', _handler);
     _recipient.dispose();
     _notes.dispose();
     _signature.dispose();
     super.dispose();
   }
 
+  Future<void> _hydrateCache() async {
+    final pos = await DriverPositionCache.instance.readForLoad(widget.loadId);
+    if (!mounted || pos == null) return;
+    setState(() => _driverPoint = pos.latLng);
+  }
+
   Future<void> _fetch() async {
     try {
       final load = await ref.read(apiClientProvider).getLoad(widget.loadId);
-      if (mounted) setState(() => _load = load);
+      if (!mounted) return;
+      setState(() {
+        _load = load;
+        if (load.latestLocation != null) {
+          _driverPoint = LatLng(load.latestLocation!.lat, load.latestLocation!.lng);
+        }
+      });
+      unawaited(DriverPositionCache.instance.saveFromLoad(load));
+      try {
+        final loc = await ref.read(apiClientProvider).getLocation(loadId: widget.loadId);
+        if (!mounted || loc == null) return;
+        setState(() => _driverPoint = LatLng(loc.lat, loc.lng));
+      } catch (_) {}
+      if (load.status == 'IN_TRANSIT') {
+        unawaited(_refreshDriverPoint());
+        _startDriverPointTimer();
+      }
     } catch (_) {}
+  }
+
+  Future<void> _refreshDriverPoint() async {
+    final pos = await DriverPositionCache.instance.readForLoad(widget.loadId) ??
+        await DriverPositionCache.instance.readDevice();
+    if (!mounted || pos == null) return;
+    setState(() => _driverPoint = pos.latLng);
+  }
+
+  void _startDriverPointTimer() {
+    _driverPointTimer?.cancel();
+    _driverPointTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      unawaited(_refreshDriverPoint());
+    });
+  }
+
+  void _stopDriverPointTimer() {
+    _driverPointTimer?.cancel();
+    _driverPointTimer = null;
   }
 
   Future<void> _respond(String action) async {
@@ -84,7 +140,9 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
       };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       if (action == 'start') {
-        await ref.read(driverLocationControllerProvider.notifier).includeLoad(widget.loadId);
+        await ref.read(driverLocationControllerProvider.notifier).beginTrip(widget.loadId, load: updated);
+        await _refreshDriverPoint();
+        _startDriverPointTimer();
       }
     } catch (_) {
       if (!mounted) return;
@@ -201,6 +259,7 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
           );
       if (!mounted) return;
       setState(() => _submitted = true);
+      _stopDriverPointTimer();
       await ref.read(driverLocationControllerProvider.notifier).sync();
     } catch (_) {
       if (!mounted) return;
@@ -251,7 +310,8 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
           TripMap(
             pickup: load.pickupLat != null ? LatLng(load.pickupLat!, load.pickupLng!) : null,
             delivery: load.deliveryLat != null ? LatLng(load.deliveryLat!, load.deliveryLng!) : null,
-            driver: load.latestLocation != null ? LatLng(load.latestLocation!.lat, load.latestLocation!.lng) : null,
+            driver: _driverPoint ??
+                (load.latestLocation != null ? LatLng(load.latestLocation!.lat, load.latestLocation!.lng) : null),
             showLiveBadge: load.status == 'IN_TRANSIT',
             expandable: true,
           ),

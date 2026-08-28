@@ -77,7 +77,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               if (profilePath != null)
                 IconButton(
                   tooltip: l10n.headerProfile,
-                  onPressed: () => context.go(profilePath!),
+                  onPressed: () => context.push(profilePath!),
                   icon: PersonAvatar(
                     imageUrl: user?.imageUrl,
                     name: user?.name,

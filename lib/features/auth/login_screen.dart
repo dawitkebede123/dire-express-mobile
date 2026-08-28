@@ -66,7 +66,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ? l10n.toastRoleMismatch
           : isAuthFailure
               ? l10n.toastInvalidCredentials
-              : (e.message.isNotEmpty ? e.message : l10n.toastConnectionFailed);
+              : e.isNoNetwork
+                  ? l10n.toastNoNetwork
+                  : l10n.toastConnectionFailed;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (e, st) {
       if (kDebugMode) {

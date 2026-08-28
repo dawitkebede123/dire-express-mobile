@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
+import '../../core/driver_position_cache.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
 import '../../shared/format.dart';
@@ -35,13 +38,17 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
     super.initState();
     _handler = (_, data) {
       if (data['load'] is Map<String, dynamic>) {
-        setState(() => _load = FreightLoad.fromJson(data['load'] as Map<String, dynamic>));
+        final load = FreightLoad.fromJson(data['load'] as Map<String, dynamic>);
+        setState(() => _load = load);
+        unawaited(DriverPositionCache.instance.saveFromLoad(load));
       }
       final loc = data['location'];
       if (loc is Map && loc['lat'] != null) {
         setState(() => _driverPoint = LatLng((loc['lat'] as num).toDouble(), (loc['lng'] as num).toDouble()));
+        unawaited(DriverPositionCache.instance.saveFromEvent(widget.loadId, loc));
       }
     };
+    unawaited(_hydrateCache());
     _fetch();
     pusherService.subscribe('load-${widget.loadId}', 'status-update', _handler);
     pusherService.subscribe('load-${widget.loadId}', 'location-update', _handler);
@@ -54,6 +61,12 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
     super.dispose();
   }
 
+  Future<void> _hydrateCache() async {
+    final pos = await DriverPositionCache.instance.readForLoad(widget.loadId);
+    if (!mounted || pos == null || _driverPoint != null) return;
+    setState(() => _driverPoint = pos.latLng);
+  }
+
   Future<void> _fetch() async {
     try {
       final load = await ref.read(apiClientProvider).getLoad(widget.loadId);
@@ -64,6 +77,22 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
           _driverPoint = LatLng(load.latestLocation!.lat, load.latestLocation!.lng);
         }
       });
+      unawaited(DriverPositionCache.instance.saveFromLoad(load));
+      unawaited(_refreshLiveLocation());
+    } catch (_) {}
+  }
+
+  Future<void> _refreshLiveLocation() async {
+    try {
+      final loc = await ref.read(apiClientProvider).getLocation(loadId: widget.loadId);
+      if (!mounted || loc == null) return;
+      setState(() => _driverPoint = LatLng(loc.lat, loc.lng));
+      unawaited(DriverPositionCache.instance.savePosition(
+        lat: loc.lat,
+        lng: loc.lng,
+        recordedAt: loc.recordedAt,
+        loadId: widget.loadId,
+      ));
     } catch (_) {}
   }
 

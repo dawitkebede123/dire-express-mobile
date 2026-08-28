@@ -205,6 +205,15 @@ class AppLocalizationsAm extends AppLocalizations {
   String get registerVehicleType => 'የተሽከርካሪ አይነት';
 
   @override
+  String get registerTruckPhoto => 'የመኪና ፎቶ';
+
+  @override
+  String get registerTruckPhotoHint => 'የመኪናዎን ፎቶ ያክሉ';
+
+  @override
+  String get registerLoadingCapacity => 'የመጫን አቅም';
+
+  @override
   String get registerNamePlaceholder => 'Jane Doe';
 
   @override
@@ -307,6 +316,9 @@ class AppLocalizationsAm extends AppLocalizations {
   String get equipmentFlatbed => 'ፍላትቤድ';
 
   @override
+  String get equipmentLowBed => 'ሎው ቤድ';
+
+  @override
   String get equipmentFreight => 'ጭነት';
 
   @override
@@ -331,7 +343,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get trackRequestReceived => 'ጥያቄ ተቀብሏል';
 
   @override
-  String get trackPickedUp => 'ተወስዷል';
+  String get trackPickedUp => 'አሽከርካሪ ተመድቧል';
 
   @override
   String trackScheduled(String datetime) {
@@ -370,8 +382,24 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String weightLbs(String n) {
-    return '$n ፓውንድ';
+    return '$n ኩንታል';
   }
+
+  @override
+  String weightQuintal(String n) {
+    return '$n ኩንታል';
+  }
+
+  @override
+  String weightKg(String n) {
+    return '$n ክግ';
+  }
+
+  @override
+  String get unitQuintal => 'ኩንታል';
+
+  @override
+  String get unitKg => 'ክግ';
 
   @override
   String get toastInvalidCredentials => 'ልክ ያልሆነ ኢሜይል፣ ስልክ ወይም የይለፍ ቃል';
@@ -380,8 +408,46 @@ class AppLocalizationsAm extends AppLocalizations {
   String get toastRoleMismatch => 'ይህ መለያ ከተመረጠው ሚና ጋር አይዛመድም።';
 
   @override
-  String get toastConnectionFailed =>
-      'ሰርቨሩን ማግኘት አልተቻለም። ግንኙነትዎን እና የ API አድራሻን ያረጋግጡ።';
+  String get toastConnectionFailed => 'ኢንተርኔት የለም። ግንኙነትዎን ያረጋግጡና እንደገና ይሞክሩ።';
+
+  @override
+  String get toastNoNetwork => 'ኢንተርኔት የለም። ግንኙነትዎን ያረጋግጡና እንደገና ይሞክሩ።';
+
+  @override
+  String get toastDeliveryBeforePickup => 'የማድረሻ ቀን ከመውሰጃ ቀን በፊት መሆን አይችልም።';
+
+  @override
+  String get brokerPickOnMap => 'ካርታ ላይ ምረጥ';
+
+  @override
+  String get brokerConfirmMapLocation => 'ይህን አካባቢ ተጠቀም';
+
+  @override
+  String get brokerMapPickTitle => 'አካባቢ ይምረጡ';
+
+  @override
+  String get offlineMapsTitle => 'ከመስመር ውጭ ካርታዎች';
+
+  @override
+  String get offlineMapsDownload => 'ለከመስመር ውጭ ካርታዎችን አውርድ';
+
+  @override
+  String get offlineMapsUpdate => 'ካርታዎችን አዘምን';
+
+  @override
+  String offlineMapsDownloading(int progress) {
+    return 'ካርታዎች በማውረድ ላይ… $progress%';
+  }
+
+  @override
+  String get offlineMapsReady => 'ከመስመር ውጭ ካርታዎች ዝግጁ ናቸው';
+
+  @override
+  String get offlineMapsFailed => 'ከመስመር ውጭ ካርታዎችን ማውረድ አልተቻለም';
+
+  @override
+  String get offlineMapsHint =>
+      'ያለ ኢንተርኔት ለመጠቀም የኢትዮጵያና የጅቡቲ መንገድ ካርታዎችን ያውርዱ።';
 
   @override
   String get toastRegistrationFailed => 'ምዝገባ አልተሳካም';
@@ -427,8 +493,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get toastSelectCustomer => 'ለመቀጠል ደንበኛ ይምረጡ';
 
   @override
-  String get toastPickupDeliveryRequired =>
-      'መውሰጃ፣ ማድረሻ፣ የመውሰጃ ቀን እና የጭነት መግለጫ ያስፈልጋሉ';
+  String get toastPickupDeliveryRequired => 'መውሰጃ፣ ማድረሻ እና የመውሰጃ ቀን ያስፈልጋሉ';
 
   @override
   String get toastCreateLoadFailed => 'ጭነት መፍጠር አልተሳካም';
@@ -597,7 +662,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get brokerEquipmentType => 'የመሳሪያ አይነት';
 
   @override
-  String get brokerWeightLbs => 'ክብደት (ፓውንድ)';
+  String get brokerWeightLbs => 'ክብደት';
 
   @override
   String get brokerRate => 'ዋጋ (ብር)';
@@ -618,7 +683,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get brokerDeliveryDate => 'የማድረሻ ቀን';
 
   @override
-  String get brokerCargoDescription => 'የጭነት መግለጫ';
+  String get brokerCargoDescription => 'የጭነት መግለጫ (አማራጭ)';
 
   @override
   String get brokerNotes => 'ማስታወሻዎች';
@@ -705,7 +770,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get brokerNotesPlaceholder => 'ልዩ የአያያዝ መመሪያዎች';
 
   @override
-  String get brokerWeightPlaceholder => '40,000';
+  String get brokerWeightPlaceholder => '400';
 
   @override
   String get brokerRatePlaceholder => '2,500';
@@ -763,6 +828,23 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get brokerVehicleNotSet => 'ተሽከርካሪ አልተቀመጠም';
+
+  @override
+  String brokerLoadingCapacity(String n) {
+    return 'አቅም፡ $n';
+  }
+
+  @override
+  String get brokerCapacityExceeded => 'ጭነቱ የመኪና አቅም ያለፈው';
+
+  @override
+  String get profileLoadingCapacity => 'የመጫን አቅም';
+
+  @override
+  String get profileTruckPhoto => 'የመኪና ፎቶ';
+
+  @override
+  String get profileTruckPhotoHint => 'የመኪና ፎቶ ለመጨመር ወይም ለመቀየር ይንኩ';
 
   @override
   String brokerLoadsAssigned(int count) {
@@ -831,7 +913,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get driverCustomer => 'ደንበኛ';
 
   @override
-  String get driverPickedUp => 'ተወስዷል';
+  String get driverPickedUp => 'አሽከርካሪ ተመድቧል';
 
   @override
   String get driverCompleteDelivery => 'ማድረስ ጨርስ';
@@ -1005,7 +1087,7 @@ class AppLocalizationsAm extends AppLocalizations {
   }
 
   @override
-  String get customerNoDriver => 'እስካሁን ሹፌር አልተመደበም።';
+  String get customerNoDriver => 'እስካሁን አሽከርካሪ አልተመደበም።';
 
   @override
   String get customerViewDocuments => 'ሰነዶችን ይመልከቱ';
@@ -1017,7 +1099,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get bannerPending => 'ጭነትዎን ከአጓጓዥ ጋር እያገናኘን ነው።';
 
   @override
-  String get bannerCreated => 'ጭነትዎ ተይዟል እና የሹፌር ምደባ በመጠባበቅ ላይ ነው።';
+  String get bannerCreated => 'ጭነትዎ ተፈቅዷል  አሽከርካሪ  ምደባ በመጠባበቅ ላይ ነው።';
 
   @override
   String get bannerAssigned => 'ሹፌር ተመድቧል እና በቅርቡ ይወስዳል።';
@@ -1032,7 +1114,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get bannerDelivered => 'ጭነትዎ ደርሷል።';
 
   @override
-  String get bannerRejected => 'ጭነትዎን ለሌላ ሹፌር እየመደብን ነው።';
+  String get bannerRejected => 'ጭነትዎን ለሌላ አሽከርካሪ  እየመደብን ነው።';
 
   @override
   String get bannerCancelled => 'ይህ ጭነት ተሰርዟል።';

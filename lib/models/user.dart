@@ -8,6 +8,8 @@ class AppUser {
     this.company,
     this.plateNo,
     this.vehicleType,
+    this.loadingCapacity,
+    this.truckImageUrl,
     this.agentId,
     this.imageUrl,
   });
@@ -20,6 +22,8 @@ class AppUser {
   final String? company;
   final String? plateNo;
   final String? vehicleType;
+  final double? loadingCapacity;
+  final String? truckImageUrl;
   final String? agentId;
   final String? imageUrl;
 
@@ -49,6 +53,13 @@ class AppUser {
       return (value == null || value.isEmpty) ? null : value;
     }
 
+    double? pickNumber(Map<String, dynamic> map, String key) {
+      final value = map[key];
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      return double.tryParse(value.toString());
+    }
+
     return AppUser(
       id: json['id']?.toString() ?? '',
       email: json['email'] as String? ?? '',
@@ -58,6 +69,8 @@ class AppUser {
       company: json['company'] as String?,
       plateNo: pick(json, 'plateNo') ?? pick(json, 'plateNumber') ?? pick(driver, 'plateNo') ?? pick(driver, 'plateNumber'),
       vehicleType: pick(json, 'vehicleType') ?? pick(driver, 'vehicleType'),
+      loadingCapacity: pickNumber(json, 'loadingCapacity') ?? pickNumber(driver, 'loadingCapacity'),
+      truckImageUrl: pick(json, 'truckImageUrl') ?? pick(driver, 'truckImageUrl'),
       agentId: json['agentId'] as String?,
       imageUrl: json['imageUrl'] as String?,
     );
@@ -69,6 +82,8 @@ class AppUser {
     String? company,
     String? plateNo,
     String? vehicleType,
+    double? loadingCapacity,
+    String? truckImageUrl,
   }) {
     return AppUser(
       id: id,
@@ -79,6 +94,8 @@ class AppUser {
       company: company ?? this.company,
       plateNo: plateNo ?? this.plateNo,
       vehicleType: vehicleType ?? this.vehicleType,
+      loadingCapacity: loadingCapacity ?? this.loadingCapacity,
+      truckImageUrl: truckImageUrl ?? this.truckImageUrl,
       agentId: agentId,
       imageUrl: imageUrl,
     );
@@ -94,6 +111,8 @@ class AppUser {
       company: company,
       plateNo: plateNo,
       vehicleType: vehicleType,
+      loadingCapacity: loadingCapacity,
+      truckImageUrl: truckImageUrl,
       agentId: agentId,
       imageUrl: imageUrl,
     );

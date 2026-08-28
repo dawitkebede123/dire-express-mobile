@@ -6,6 +6,8 @@ class DriverProfile {
     required this.user,
     this.plateNo,
     this.vehicleType,
+    this.loadingCapacity,
+    this.truckImageUrl,
     this.isAvailable = true,
     this.loadCount = 0,
   });
@@ -14,6 +16,8 @@ class DriverProfile {
   final NamedPerson user;
   final String? plateNo;
   final String? vehicleType;
+  final double? loadingCapacity;
+  final String? truckImageUrl;
   final bool isAvailable;
   final int loadCount;
 
@@ -24,10 +28,18 @@ class DriverProfile {
       user: NamedPerson.fromJson(json['user'] as Map<String, dynamic>?),
       plateNo: json['plateNo'] as String?,
       vehicleType: json['vehicleType'] as String?,
+      loadingCapacity: _parseNumber(json['loadingCapacity']),
+      truckImageUrl: json['truckImageUrl'] as String?,
       isAvailable: json['isAvailable'] as bool? ?? true,
       loadCount: count?['loads'] as int? ?? 0,
     );
   }
+}
+
+double? _parseNumber(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
 }
 
 class CustomerProfile {

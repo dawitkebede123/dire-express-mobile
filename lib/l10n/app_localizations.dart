@@ -482,6 +482,24 @@ abstract class AppLocalizations {
   /// **'Vehicle type'**
   String get registerVehicleType;
 
+  /// No description provided for @registerTruckPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck photo'**
+  String get registerTruckPhoto;
+
+  /// No description provided for @registerTruckPhotoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a photo of your truck'**
+  String get registerTruckPhotoHint;
+
+  /// No description provided for @registerLoadingCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading capacity'**
+  String get registerLoadingCapacity;
+
   /// No description provided for @registerNamePlaceholder.
   ///
   /// In en, this message translates to:
@@ -686,6 +704,12 @@ abstract class AppLocalizations {
   /// **'Flatbed'**
   String get equipmentFlatbed;
 
+  /// No description provided for @equipmentLowBed.
+  ///
+  /// In en, this message translates to:
+  /// **'Low bed'**
+  String get equipmentLowBed;
+
   /// No description provided for @equipmentFreight.
   ///
   /// In en, this message translates to:
@@ -797,8 +821,32 @@ abstract class AppLocalizations {
   /// No description provided for @weightLbs.
   ///
   /// In en, this message translates to:
-  /// **'{n} lbs'**
+  /// **'{n} Quintal'**
   String weightLbs(String n);
+
+  /// No description provided for @weightQuintal.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} Quintal'**
+  String weightQuintal(String n);
+
+  /// No description provided for @weightKg.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} kg'**
+  String weightKg(String n);
+
+  /// No description provided for @unitQuintal.
+  ///
+  /// In en, this message translates to:
+  /// **'Quintal'**
+  String get unitQuintal;
+
+  /// No description provided for @unitKg.
+  ///
+  /// In en, this message translates to:
+  /// **'KG'**
+  String get unitKg;
 
   /// No description provided for @toastInvalidCredentials.
   ///
@@ -815,8 +863,80 @@ abstract class AppLocalizations {
   /// No description provided for @toastConnectionFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not reach the server. Check your connection and API URL.'**
+  /// **'No network. Check your connection and try again.'**
   String get toastConnectionFailed;
+
+  /// No description provided for @toastNoNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'No network. Check your connection and try again.'**
+  String get toastNoNetwork;
+
+  /// No description provided for @toastDeliveryBeforePickup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery date cannot be before pickup date.'**
+  String get toastDeliveryBeforePickup;
+
+  /// No description provided for @brokerPickOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick on map'**
+  String get brokerPickOnMap;
+
+  /// No description provided for @brokerConfirmMapLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this location'**
+  String get brokerConfirmMapLocation;
+
+  /// No description provided for @brokerMapPickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select location'**
+  String get brokerMapPickTitle;
+
+  /// No description provided for @offlineMapsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline maps'**
+  String get offlineMapsTitle;
+
+  /// No description provided for @offlineMapsDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download maps for offline'**
+  String get offlineMapsDownload;
+
+  /// No description provided for @offlineMapsUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update maps'**
+  String get offlineMapsUpdate;
+
+  /// No description provided for @offlineMapsDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading maps… {progress}%'**
+  String offlineMapsDownloading(int progress);
+
+  /// No description provided for @offlineMapsReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline maps ready'**
+  String get offlineMapsReady;
+
+  /// No description provided for @offlineMapsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download offline maps'**
+  String get offlineMapsFailed;
+
+  /// No description provided for @offlineMapsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Ethiopia and Djibouti road maps for use without network.'**
+  String get offlineMapsHint;
 
   /// No description provided for @toastRegistrationFailed.
   ///
@@ -905,7 +1025,7 @@ abstract class AppLocalizations {
   /// No description provided for @toastPickupDeliveryRequired.
   ///
   /// In en, this message translates to:
-  /// **'Pickup, delivery, pickup date, and cargo description are required'**
+  /// **'Pickup, delivery, and pickup date are required'**
   String get toastPickupDeliveryRequired;
 
   /// No description provided for @toastCreateLoadFailed.
@@ -1235,7 +1355,7 @@ abstract class AppLocalizations {
   /// No description provided for @brokerWeightLbs.
   ///
   /// In en, this message translates to:
-  /// **'Weight (lbs)'**
+  /// **'Weight'**
   String get brokerWeightLbs;
 
   /// No description provided for @brokerRate.
@@ -1277,7 +1397,7 @@ abstract class AppLocalizations {
   /// No description provided for @brokerCargoDescription.
   ///
   /// In en, this message translates to:
-  /// **'Cargo description'**
+  /// **'Cargo description (Optional)'**
   String get brokerCargoDescription;
 
   /// No description provided for @brokerNotes.
@@ -1433,7 +1553,7 @@ abstract class AppLocalizations {
   /// No description provided for @brokerWeightPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'40,000'**
+  /// **'400'**
   String get brokerWeightPlaceholder;
 
   /// No description provided for @brokerRatePlaceholder.
@@ -1549,6 +1669,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Vehicle not set'**
   String get brokerVehicleNotSet;
+
+  /// No description provided for @brokerLoadingCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Capacity: {n}'**
+  String brokerLoadingCapacity(String n);
+
+  /// No description provided for @brokerCapacityExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Load exceeds truck capacity'**
+  String get brokerCapacityExceeded;
+
+  /// No description provided for @profileLoadingCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading capacity'**
+  String get profileLoadingCapacity;
+
+  /// No description provided for @profileTruckPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck photo'**
+  String get profileTruckPhoto;
+
+  /// No description provided for @profileTruckPhotoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to add or change truck photo'**
+  String get profileTruckPhotoHint;
 
   /// No description provided for @brokerLoadsAssigned.
   ///

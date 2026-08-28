@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/config.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
+import 'mapbox_tiles.dart';
 
 class TripMap extends StatefulWidget {
   const TripMap({
@@ -37,6 +38,7 @@ class TripMap extends StatefulWidget {
 class _TripMapState extends State<TripMap> {
   final _controller = MapController();
   late final ValueNotifier<LatLng?> _driverNotifier;
+  var _didInitialFit = false;
 
   @override
   void initState() {
@@ -54,8 +56,9 @@ class _TripMapState extends State<TripMap> {
   void didUpdateWidget(covariant TripMap oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.driver != oldWidget.driver) {
+      final firstDriverPin = oldWidget.driver == null && widget.driver != null;
       _driverNotifier.value = widget.driver;
-      if (widget.driver != null) {
+      if (firstDriverPin) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _fit();
         });
@@ -76,6 +79,12 @@ class _TripMapState extends State<TripMap> {
     }
     final bounds = LatLngBounds.fromPoints(points);
     _controller.fitCamera(CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(36)));
+  }
+
+  void _onMapReady() {
+    if (_didInitialFit) return;
+    _didInitialFit = true;
+    _fit();
   }
 
   void _expand() {
@@ -126,14 +135,17 @@ class _TripMapState extends State<TripMap> {
             options: MapOptions(
               initialCenter: center,
               initialZoom: widget.pickup != null ? 10 : 4,
-              onMapReady: _fit,
+              maxZoom: 16,
+              onMapReady: _onMapReady,
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}@2x?access_token={accessToken}',
+                urlTemplate: MapboxTileCache.tileUrlTemplate,
                 additionalOptions: {'accessToken': AppConfig.mapboxToken},
                 userAgentPackageName: 'com.direexpress.app',
+                maxZoom: 16,
+                keepBuffer: 2,
+                tileProvider: MapboxCachedTileProvider(),
               ),
               if (line.length >= 2)
                 PolylineLayer(

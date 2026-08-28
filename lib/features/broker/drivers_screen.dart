@@ -6,7 +6,7 @@ import '../../core/api_client.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/directory.dart';
 import '../../shared/widgets/app_header.dart';
-import '../../shared/widgets/person_avatar.dart';
+import '../../shared/widgets/driver_vehicle_row.dart';
 import '../../theme/app_theme.dart';
 
 class BrokerDriversScreen extends ConsumerStatefulWidget {
@@ -60,70 +60,25 @@ class _BrokerDriversScreenState extends ConsumerState<BrokerDriversScreen> {
                       itemBuilder: (_, i) {
                         final d = _drivers[i];
                         return Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.surfaceContainer,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Row(
-                            children: [
-                              PersonAvatar(
-                                imageUrl: d.user.imageUrl,
-                                name: d.user.name,
-                                fallbackIcon: Icons.local_shipping,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Flexible(child: Text(d.user.name, style: const TextStyle(fontWeight: FontWeight.w700))),
-                                        const SizedBox(width: 8),
-                                        _Badge(d.isAvailable ? l10n.brokerDriversAvailable : l10n.brokerDriversOnALoad, success: d.isAvailable),
-                                      ],
-                                    ),
-                                    Text(
-                                      '${d.vehicleType ?? l10n.brokerVehicleNotSet}${d.plateNo != null ? ' • ${d.plateNo}' : ''}',
-                                      style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
-                                    ),
-                                    Text(l10n.brokerLoadsAssigned(d.loadCount), style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-                                  ],
-                                ),
-                              ),
-                              if (d.user.phone != null && d.user.phone!.isNotEmpty)
-                                IconButton(
-                                  onPressed: () => launchUrl(Uri.parse('tel:${d.user.phone}')),
-                                  icon: const Icon(Icons.phone, color: AppColors.secondary),
-                                ),
-                            ],
+                          child: DriverVehicleRow(
+                            driver: d,
+                            l10n: l10n,
+                            trailing: d.user.phone != null && d.user.phone!.isNotEmpty
+                                ? IconButton(
+                                    onPressed: () => launchUrl(Uri.parse('tel:${d.user.phone}')),
+                                    icon: const Icon(Icons.phone, color: AppColors.secondary),
+                                  )
+                                : null,
                           ),
                         );
                       },
                     ),
             ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge(this.label, {required this.success});
-  final String label;
-  final bool success;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: success ? AppColors.successContainer : AppColors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: success ? AppColors.success : AppColors.onSurfaceVariant),
-      ),
     );
   }
 }

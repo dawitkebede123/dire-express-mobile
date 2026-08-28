@@ -96,6 +96,14 @@ class AuthController extends Notifier<AuthState> {
       if (meVehicle.isEmpty && localVehicle.isNotEmpty) {
         user = user.applyProfile(name: user.name, phone: user.phone, vehicleType: current.vehicleType);
       }
+      if (user.loadingCapacity == null && current.loadingCapacity != null) {
+        user = user.applyProfile(name: user.name, phone: user.phone, loadingCapacity: current.loadingCapacity);
+      }
+      if ((user.truckImageUrl == null || user.truckImageUrl!.isEmpty) &&
+          current.truckImageUrl != null &&
+          current.truckImageUrl!.isNotEmpty) {
+        user = user.applyProfile(name: user.name, phone: user.phone, truckImageUrl: current.truckImageUrl);
+      }
       state = AuthState(user: user, loading: false);
       unawaited(prefetchPersonAvatar(user.imageUrl));
     } catch (_) {}
@@ -166,31 +174,69 @@ class AuthController extends Notifier<AuthState> {
     if (user.isDriver) {
       final plate = (body['plateNo'] as String?)?.trim() ?? '';
       final vehicle = (body['vehicleType'] as String?)?.trim() ?? '';
-      if (plate.isNotEmpty || vehicle.isNotEmpty) {
-        Future<void> patchDriver() {
+      final truckPath = body['truckImagePath'] as String?;
+      final capacity = switch (body['loadingCapacity']) {
+        num n => n.toDouble(),
+        String s => double.tryParse(s),
+        _ => null,
+      };
+      if (plate.isNotEmpty || vehicle.isNotEmpty || truckPath != null || capacity != null) {
+        Future<({
+          String? plateNo,
+          String? vehicleType,
+          double? loadingCapacity,
+          String? truckImageUrl,
+        })> patchDriver({String? truckImageUrl}) {
           return _api.updateMyDriverProfile(
             plateNo: plate.isNotEmpty ? plate : null,
             vehicleType: vehicle.isNotEmpty ? vehicle : null,
+            loadingCapacity: capacity,
+            truckImageUrl: truckImageUrl,
           );
         }
 
         try {
-          await patchDriver();
+          String? truckImageUrl;
+          if (truckPath != null && truckPath.isNotEmpty) {
+            truckImageUrl = await _api.uploadFile(truckPath, kind: 'truck');
+          }
+          final saved = await patchDriver(truckImageUrl: truckImageUrl);
+          user = user.applyProfile(
+            name: user.name,
+            phone: user.phone,
+            plateNo: plate.isNotEmpty ? plate : user.plateNo,
+            vehicleType: vehicle.isNotEmpty ? vehicle : user.vehicleType,
+            loadingCapacity: saved.loadingCapacity ?? capacity ?? user.loadingCapacity,
+            truckImageUrl: saved.truckImageUrl ?? truckImageUrl ?? user.truckImageUrl,
+          );
         } catch (e) {
           if (kDebugMode) debugPrint('DRIVER PROFILE PATCH failed: $e');
           try {
             await Future<void>.delayed(const Duration(milliseconds: 400));
-            await patchDriver();
+            String? truckImageUrl;
+            if (truckPath != null && truckPath.isNotEmpty) {
+              truckImageUrl = await _api.uploadFile(truckPath, kind: 'truck');
+            }
+            final saved = await patchDriver(truckImageUrl: truckImageUrl);
+            user = user.applyProfile(
+              name: user.name,
+              phone: user.phone,
+              plateNo: plate.isNotEmpty ? plate : user.plateNo,
+              vehicleType: vehicle.isNotEmpty ? vehicle : user.vehicleType,
+              loadingCapacity: saved.loadingCapacity ?? capacity ?? user.loadingCapacity,
+              truckImageUrl: saved.truckImageUrl ?? truckImageUrl ?? user.truckImageUrl,
+            );
           } catch (e2) {
             if (kDebugMode) debugPrint('DRIVER PROFILE PATCH retry failed: $e2');
+            user = user.applyProfile(
+              name: user.name,
+              phone: user.phone,
+              plateNo: plate.isNotEmpty ? plate : user.plateNo,
+              vehicleType: vehicle.isNotEmpty ? vehicle : user.vehicleType,
+              loadingCapacity: capacity ?? user.loadingCapacity,
+            );
           }
         }
-        user = user.applyProfile(
-          name: user.name,
-          phone: user.phone,
-          plateNo: plate.isNotEmpty ? plate : user.plateNo,
-          vehicleType: vehicle.isNotEmpty ? vehicle : user.vehicleType,
-        );
       }
     }
 

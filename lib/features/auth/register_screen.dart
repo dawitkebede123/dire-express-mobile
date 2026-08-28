@@ -1,15 +1,22 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/api_client.dart';
 import '../../core/phone.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/format.dart';
+import '../../shared/weight_unit.dart';
+import '../../shared/widgets/equipment_thumb.dart';
 import '../../shared/widgets/language_switcher.dart';
 import '../../shared/widgets/logo.dart';
+import '../../shared/widgets/truck_thumb.dart';
+import '../../shared/widgets/weight_input_row.dart';
 import '../../theme/app_theme.dart';
 import 'auth_controller.dart';
-
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -24,10 +31,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phone = TextEditingController();
   final _company = TextEditingController();
   final _plate = TextEditingController();
-  final _vehicle = TextEditingController();
+  final _capacity = TextEditingController();
   final _agentId = TextEditingController();
   var _role = 'CUSTOMER';
+  var _vehicleType = 'DRY_VAN';
+  var _capacityUnit = WeightUnit.quintal;
+  File? _truckImageFile;
   var _loading = false;
+
+  static const _equipmentTypes = ['DRY_VAN', 'REEFER', 'FLATBED', 'LOW_BED'];
 
   @override
   void dispose() {
@@ -37,9 +49,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _phone.dispose();
     _company.dispose();
     _plate.dispose();
-    _vehicle.dispose();
+    _capacity.dispose();
     _agentId.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickTruckPhoto() async {
+    final l10n = AppLocalizations.of(context);
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: Text(l10n.profileTakePhoto),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: Text(l10n.profileChoosePhoto),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (source == null || !mounted) return;
+    final file = await ImagePicker().pickImage(source: source);
+    if (file == null || !mounted) return;
+    setState(() => _truckImageFile = File(file.path));
   }
 
   Future<void> _submit() async {
@@ -76,7 +119,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     final company = _company.text.trim();
     final plate = _plate.text.trim();
-    final vehicle = _vehicle.text.trim();
+    final capacityRaw = _capacity.text.trim();
+    double? loadingCapacity;
+    if (_role == 'DRIVER' && capacityRaw.isNotEmpty) {
+      final parsed = double.tryParse(capacityRaw);
+      if (parsed == null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastProfileSaveFailed)));
+        return;
+      }
+      loadingCapacity = toQuintals(parsed, _capacityUnit);
+    }
     setState(() => _loading = true);
     try {
       await ref.read(authControllerProvider.notifier).register({
@@ -88,7 +140,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         if (needsAgent) 'agentId': agentId,
         if (_role != 'DRIVER' && company.isNotEmpty) 'company': company,
         if (_role == 'DRIVER' && plate.isNotEmpty) 'plateNo': plate,
-        if (_role == 'DRIVER' && vehicle.isNotEmpty) 'vehicleType': vehicle,
+        if (_role == 'DRIVER') 'vehicleType': _vehicleType,
+        if (_role == 'DRIVER' && _truckImageFile != null) 'truckImagePath': _truckImageFile!.path,
+        if (_role == 'DRIVER' && loadingCapacity != null) 'loadingCapacity': loadingCapacity,
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastAccountCreated)));
@@ -106,7 +160,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ? l10n.toastRoleMismatch
           : isAuthFailure
               ? l10n.toastInvalidCredentials
-              : (cause.message.isNotEmpty ? cause.message : l10n.toastConnectionFailed);
+              : cause.isNoNetwork
+                  ? l10n.toastNoNetwork
+                  : l10n.toastConnectionFailed;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       context.go('/login');
     } on ApiException catch (e) {
@@ -119,7 +175,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         'referredByNotFound' => l10n.toastReferredByNotFound,
         'emailRegistered' => l10n.toastEmailRegistered,
         'phoneRegistered' => l10n.toastPhoneRegistered,
-        'timeout' => l10n.toastConnectionFailed,
+        'timeout' || 'noNetwork' || 'connectionFailed' => l10n.toastNoNetwork,
         'registrationFailed' => l10n.toastRegistrationFailed,
         _ => l10n.toastRegistrationFailed,
       };
@@ -215,7 +271,59 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     _Labeled(l10n.registerCompany, _company),
                   if (_role == 'DRIVER') ...[
                     _Labeled(l10n.registerPlateNo, _plate),
-                    _Labeled(l10n.registerVehicleType, _vehicle),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.registerVehicleType, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            value: _vehicleType,
+                            decoration: const InputDecoration(),
+                            items: _equipmentTypes
+                                .map(
+                                  (type) => DropdownMenuItem(
+                                    value: type,
+                                    child: EquipmentLabelRow(
+                                      type: type,
+                                      label: equipmentLabel(l10n, type),
+                                      thumbSize: 28,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: _loading ? null : (value) => setState(() => _vehicleType = value ?? 'DRY_VAN'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l10n.registerTruckPhoto, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        subtitle: Text(l10n.registerTruckPhotoHint),
+                        trailing: _truckImageFile != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(_truckImageFile!, width: 48, height: 48, fit: BoxFit.cover),
+                              )
+                            : TruckThumb(vehicleType: _vehicleType, size: 48),
+                        onTap: _loading ? null : _pickTruckPhoto,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: WeightInputRow(
+                        controller: _capacity,
+                        unit: _capacityUnit,
+                        onUnitChanged: (unit) => setState(() => _capacityUnit = unit),
+                        label: l10n.registerLoadingCapacity,
+                        hint: l10n.brokerWeightPlaceholder,
+                        enabled: !_loading,
+                      ),
+                    ),
                   ],
                   if (_role == 'DRIVER' || _role == 'CUSTOMER')
                     _Labeled(l10n.registerAgentId, _agentId),

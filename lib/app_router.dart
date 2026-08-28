@@ -101,6 +101,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/driver/notifications', builder: (_, __) => const NotificationsScreen()),
       GoRoute(path: '/customer/notifications', builder: (_, __) => const NotificationsScreen()),
       GoRoute(
+        path: '/broker/profile/visit',
+        builder: (_, __) => const ProfileScreen(backPath: '/broker'),
+      ),
+      GoRoute(
+        path: '/customer/profile/visit',
+        builder: (_, __) => const ProfileScreen(backPath: '/customer'),
+      ),
+      GoRoute(
         path: '/broker/loads/new',
         builder: (_, __) => const CreateLoadScreen(),
       ),

@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
 import '../../theme/app_theme.dart';
 import '../format.dart';
+import 'equipment_thumb.dart';
 import 'route_timeline.dart';
 import 'status_chip.dart';
 
@@ -133,8 +134,8 @@ class LoadBoardCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(equipmentIcon(load.equipmentType), size: 16, color: AppColors.onTertiaryFixed),
-                    const SizedBox(width: 4),
+                    EquipmentThumb(type: load.equipmentType, size: 20, radius: 4),
+                    const SizedBox(width: 6),
                     Text(
                       equipmentLabel(l10n, load.equipmentType),
                       style: const TextStyle(

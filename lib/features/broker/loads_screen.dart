@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
+import 'broker_loads_auto_refresh.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
 import '../../shared/widgets/app_header.dart';
@@ -40,6 +41,7 @@ class _BrokerLoadsScreenState extends ConsumerState<BrokerLoadsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(brokerLoadsAutoRefreshProvider);
     ref.listen(loadsRefreshProvider, (_, __) {
       _load();
     });

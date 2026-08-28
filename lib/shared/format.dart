@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
 import 'ethiopian_date.dart';
 import 'system_price.dart';
+import 'weight_unit.dart';
 
 String formatCurrency(num? amount, Locale locale) {
   if (amount == null) return '—';
@@ -75,13 +76,15 @@ String shortAddress(String address) {
   return region.isNotEmpty ? '$city, $region' : city;
 }
 
-String? formatWeight(double? lbs, AppLocalizations l10n) {
-  if (lbs == null) return null;
-  if (lbs >= 1000) {
-    final k = (lbs / 1000).toStringAsFixed(lbs % 1000 == 0 ? 0 : 1);
-    return l10n.weightLbs('${k}k');
-  }
-  return l10n.weightLbs(lbs.round().toString());
+String? formatWeightValue(double? quintals, AppLocalizations l10n, WeightUnit unit) {
+  if (quintals == null) return null;
+  final value = fromQuintals(quintals, unit);
+  final text = formatWeightNumber(value);
+  return unit == WeightUnit.quintal ? l10n.weightQuintal(text) : l10n.weightKg(text);
+}
+
+String? formatWeight(double? quintal, AppLocalizations l10n) {
+  return formatWeightValue(quintal, l10n, WeightUnit.quintal);
 }
 
 String statusLabel(AppLocalizations l10n, String status) {
@@ -115,6 +118,10 @@ String equipmentLabel(AppLocalizations l10n, String? type) {
       return l10n.equipmentReefer;
     case 'FLATBED':
       return l10n.equipmentFlatbed;
+    case 'LOW_BED':
+    case 'CONTAINER_20':
+    case 'CONTAINER_40':
+      return l10n.equipmentLowBed;
     default:
       return l10n.equipmentFreight;
   }
@@ -125,6 +132,7 @@ IconData equipmentIcon(String? type) {
     case 'REEFER':
       return Icons.ac_unit;
     case 'FLATBED':
+    case 'LOW_BED':
       return Icons.view_in_ar;
     default:
       return Icons.local_shipping_outlined;

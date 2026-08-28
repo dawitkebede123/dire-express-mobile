@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../core/api_client.dart';
+import '../../core/driver_position_cache.dart';
 import '../../core/locale_controller.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/load.dart';
 import '../auth/auth_controller.dart';
 
 final driverLocationControllerProvider =
@@ -21,6 +23,8 @@ class GpsService {
   String? _notificationText;
   var _starting = false;
   var _askedAlways = false;
+  var _sending = false;
+  Position? _queued;
 
   bool get isWatching => _watch != null || _poll != null;
 
@@ -61,8 +65,15 @@ class GpsService {
       _notificationText = notificationText;
 
       try {
-        final current = await Geolocator.getCurrentPosition();
-        await _send(current);
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) unawaited(_send(lastKnown));
+      } catch (_) {}
+
+      try {
+        final current = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(timeLimit: Duration(seconds: 8)),
+        );
+        unawaited(_send(current));
       } catch (_) {}
 
       _watch = Geolocator.getPositionStream(
@@ -71,9 +82,12 @@ class GpsService {
         unawaited(_send(pos));
       });
 
-      _poll = Timer.periodic(const Duration(seconds: 15), (_) async {
+      _poll = Timer.periodic(const Duration(seconds: 120), (_) async {
         try {
-          final pos = await Geolocator.getCurrentPosition();
+          final pos = await Geolocator.getLastKnownPosition() ??
+              await Geolocator.getCurrentPosition(
+                locationSettings: const LocationSettings(timeLimit: Duration(seconds: 8)),
+              );
           await _send(pos);
         } catch (_) {}
       });
@@ -135,20 +149,57 @@ class GpsService {
   }
 
   Future<void> _send(Position pos) async {
-    final api = _api;
+    final cache = DriverPositionCache.instance;
     final ids = _loadIds.toList();
-    if (api == null || ids.isEmpty) return;
+    await cache.savePosition(
+      lat: pos.latitude,
+      lng: pos.longitude,
+      heading: pos.heading.isNaN ? null : pos.heading,
+      speed: pos.speed.isNaN ? null : pos.speed,
+    );
     for (final id in ids) {
+      await cache.savePosition(
+        lat: pos.latitude,
+        lng: pos.longitude,
+        heading: pos.heading.isNaN ? null : pos.heading,
+        speed: pos.speed.isNaN ? null : pos.speed,
+        loadId: id,
+      );
+    }
+
+    if (_sending) {
+      _queued = pos;
+      return;
+    }
+    _sending = true;
+    try {
+      var next = pos;
+      while (true) {
+        await _post(next, ids);
+        final queued = _queued;
+        if (queued == null) break;
+        _queued = null;
+        next = queued;
+      }
+    } finally {
+      _sending = false;
+    }
+  }
+
+  Future<void> _post(Position pos, List<String> ids) async {
+    final api = _api;
+    if (api == null || ids.isEmpty) return;
+    await Future.wait(ids.map((id) async {
       try {
         await api.postLocation(
           lat: pos.latitude,
           lng: pos.longitude,
-          heading: pos.heading,
-          speed: pos.speed,
+          heading: pos.heading.isNaN ? null : pos.heading,
+          speed: pos.speed.isNaN ? null : pos.speed,
           loadId: id,
         );
       } catch (_) {}
-    }
+    }));
   }
 
   Future<Position?> currentPosition() async {
@@ -165,7 +216,14 @@ class GpsService {
     }
 
     try {
-      return await Geolocator.getCurrentPosition();
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) return lastKnown;
+    } catch (_) {}
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(timeLimit: Duration(seconds: 8)),
+      );
     } catch (_) {
       return null;
     }
@@ -177,6 +235,26 @@ class GpsService {
     return Geolocator.distanceBetween(pos.latitude, pos.longitude, lat, lng);
   }
 
+  /// Post the current device position immediately (e.g. right after trip start).
+  Future<void> sendCurrentPosition() async {
+    if (_loadIds.isEmpty) return;
+
+    try {
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        await _send(lastKnown);
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      final current = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(timeLimit: Duration(seconds: 8)),
+      );
+      await _send(current);
+    } catch (_) {}
+  }
+
   Future<void> stop() async {
     await _watch?.cancel();
     _watch = null;
@@ -186,6 +264,7 @@ class GpsService {
     _loadIds = {};
     _notificationTitle = null;
     _notificationText = null;
+    _queued = null;
   }
 }
 
@@ -219,7 +298,7 @@ class DriverLocationController extends Notifier<Set<String>> {
       return;
     }
     final started = _refresh == null;
-    _refresh ??= Timer.periodic(const Duration(seconds: 30), (_) {
+    _refresh ??= Timer.periodic(const Duration(seconds: 90), (_) {
       unawaited(sync());
     });
     if (started) await sync();
@@ -231,6 +310,27 @@ class DriverLocationController extends Notifier<Set<String>> {
     await _ensureWatching(next);
   }
 
+  /// Start GPS tracking for a trip: cache load, watch position, post immediately.
+  Future<void> beginTrip(String loadId, {FreightLoad? load}) async {
+    final next = {...state, loadId};
+    state = next;
+    final cache = DriverPositionCache.instance;
+    if (load != null) {
+      await cache.saveFromLoad(load);
+      await cache.saveTransitIds({loadId});
+    }
+    await _ensureWatching(next);
+    await _gps.sendCurrentPosition();
+  }
+
+  /// Force a GPS sync and one fresh location post (e.g. when reopening a trip).
+  Future<void> nudgeLocation() async {
+    await sync();
+    if (state.isEmpty) return;
+    await _ensureWatching(state);
+    await _gps.sendCurrentPosition();
+  }
+
   Future<void> sync() async {
     final user = ref.read(authControllerProvider).user;
     if (user == null || !user.isDriver) {
@@ -239,14 +339,35 @@ class DriverLocationController extends Notifier<Set<String>> {
     }
     if (_syncing) return;
     _syncing = true;
+    final cache = DriverPositionCache.instance;
     try {
-      final loads = await ref.read(apiClientProvider).listLoads();
-      final ids = loads.where((l) => l.status == 'IN_TRANSIT').map((l) => l.id).toSet();
+      List<FreightLoad> loads;
+      try {
+        loads = await ref.read(apiClientProvider).listLoads(status: 'IN_TRANSIT');
+      } catch (_) {
+        loads = await ref.read(apiClientProvider).listLoads();
+      }
+      final activeLoads = loads.where((l) => l.status == 'IN_TRANSIT').toList();
+      final ids = activeLoads.map((l) => l.id).toSet();
+      await cache.saveTransitIds(ids);
+      if (activeLoads.isNotEmpty) {
+        await cache.saveActiveLoad(activeLoads.first);
+        for (final load in activeLoads) {
+          await cache.saveFromLoad(load);
+        }
+      }
       if (ids.length != state.length || !state.containsAll(ids)) {
         state = ids;
       }
       await _ensureWatching(ids);
     } catch (_) {
+      if (state.isEmpty) {
+        final cached = await cache.readTransitIds();
+        if (cached.isNotEmpty) {
+          state = cached;
+          await _ensureWatching(cached);
+        }
+      }
     } finally {
       _syncing = false;
     }

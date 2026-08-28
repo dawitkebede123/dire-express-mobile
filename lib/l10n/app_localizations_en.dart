@@ -208,6 +208,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registerVehicleType => 'Vehicle type';
 
   @override
+  String get registerTruckPhoto => 'Truck photo';
+
+  @override
+  String get registerTruckPhotoHint => 'Add a photo of your truck';
+
+  @override
+  String get registerLoadingCapacity => 'Loading capacity';
+
+  @override
   String get registerNamePlaceholder => 'Jane Doe';
 
   @override
@@ -310,6 +319,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get equipmentFlatbed => 'Flatbed';
 
   @override
+  String get equipmentLowBed => 'Low bed';
+
+  @override
   String get equipmentFreight => 'Freight';
 
   @override
@@ -373,8 +385,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String weightLbs(String n) {
-    return '$n lbs';
+    return '$n Quintal';
   }
+
+  @override
+  String weightQuintal(String n) {
+    return '$n Quintal';
+  }
+
+  @override
+  String weightKg(String n) {
+    return '$n kg';
+  }
+
+  @override
+  String get unitQuintal => 'Quintal';
+
+  @override
+  String get unitKg => 'KG';
 
   @override
   String get toastInvalidCredentials => 'Invalid email, phone, or password';
@@ -385,7 +413,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get toastConnectionFailed =>
-      'Could not reach the server. Check your connection and API URL.';
+      'No network. Check your connection and try again.';
+
+  @override
+  String get toastNoNetwork =>
+      'No network. Check your connection and try again.';
+
+  @override
+  String get toastDeliveryBeforePickup =>
+      'Delivery date cannot be before pickup date.';
+
+  @override
+  String get brokerPickOnMap => 'Pick on map';
+
+  @override
+  String get brokerConfirmMapLocation => 'Use this location';
+
+  @override
+  String get brokerMapPickTitle => 'Select location';
+
+  @override
+  String get offlineMapsTitle => 'Offline maps';
+
+  @override
+  String get offlineMapsDownload => 'Download maps for offline';
+
+  @override
+  String get offlineMapsUpdate => 'Update maps';
+
+  @override
+  String offlineMapsDownloading(int progress) {
+    return 'Downloading maps… $progress%';
+  }
+
+  @override
+  String get offlineMapsReady => 'Offline maps ready';
+
+  @override
+  String get offlineMapsFailed => 'Could not download offline maps';
+
+  @override
+  String get offlineMapsHint =>
+      'Download Ethiopia and Djibouti road maps for use without network.';
 
   @override
   String get toastRegistrationFailed => 'Registration failed';
@@ -432,7 +501,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get toastPickupDeliveryRequired =>
-      'Pickup, delivery, pickup date, and cargo description are required';
+      'Pickup, delivery, and pickup date are required';
 
   @override
   String get toastCreateLoadFailed => 'Failed to create load';
@@ -607,7 +676,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brokerEquipmentType => 'Equipment Type';
 
   @override
-  String get brokerWeightLbs => 'Weight (lbs)';
+  String get brokerWeightLbs => 'Weight';
 
   @override
   String get brokerRate => 'Rate (ETB)';
@@ -628,7 +697,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brokerDeliveryDate => 'Delivery date';
 
   @override
-  String get brokerCargoDescription => 'Cargo description';
+  String get brokerCargoDescription => 'Cargo description (Optional)';
 
   @override
   String get brokerNotes => 'Notes';
@@ -715,7 +784,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brokerNotesPlaceholder => 'Special handling instructions';
 
   @override
-  String get brokerWeightPlaceholder => '40,000';
+  String get brokerWeightPlaceholder => '400';
 
   @override
   String get brokerRatePlaceholder => '2,500';
@@ -773,6 +842,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get brokerVehicleNotSet => 'Vehicle not set';
+
+  @override
+  String brokerLoadingCapacity(String n) {
+    return 'Capacity: $n';
+  }
+
+  @override
+  String get brokerCapacityExceeded => 'Load exceeds truck capacity';
+
+  @override
+  String get profileLoadingCapacity => 'Loading capacity';
+
+  @override
+  String get profileTruckPhoto => 'Truck photo';
+
+  @override
+  String get profileTruckPhotoHint => 'Tap to add or change truck photo';
 
   @override
   String brokerLoadsAssigned(int count) {

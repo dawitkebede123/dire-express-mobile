@@ -83,6 +83,8 @@ class FreightLoad {
     this.customerCompany,
     this.driver,
     this.driverVehicle,
+    this.driverLoadingCapacity,
+    this.driverTruckImageUrl,
     this.proofOfDelivery,
     this.latestLocation,
   });
@@ -110,6 +112,8 @@ class FreightLoad {
   final String? customerCompany;
   final NamedPerson? driver;
   final String? driverVehicle;
+  final double? driverLoadingCapacity;
+  final String? driverTruckImageUrl;
   final ProofOfDelivery? proofOfDelivery;
   final GeoPoint? latestLocation;
 
@@ -163,8 +167,43 @@ class FreightLoad {
           ? NamedPerson.fromJson(driverJson!['user'] as Map<String, dynamic>)
           : null,
       driverVehicle: driverJson?['vehicleType'] as String?,
+      driverLoadingCapacity: parseNumber(driverJson?['loadingCapacity']),
+      driverTruckImageUrl: driverJson?['truckImageUrl'] as String?,
       proofOfDelivery: _podFromJson(json['proofOfDelivery'] ?? json['pod']),
       latestLocation: latest,
     );
   }
+
+  Map<String, dynamic> toCacheJson() => {
+        'id': id,
+        'referenceNo': referenceNo,
+        'status': status,
+        'pickupAddress': pickupAddress,
+        'deliveryAddress': deliveryAddress,
+        'pickupDate': pickupDate.toIso8601String(),
+        'pickupLat': pickupLat,
+        'pickupLng': pickupLng,
+        'deliveryLat': deliveryLat,
+        'deliveryLng': deliveryLng,
+        if (deliveryDate != null) 'deliveryDate': deliveryDate!.toIso8601String(),
+        if (customer != null)
+          'customer': {
+            if (customerCompany != null) 'company': customerCompany,
+            'user': {
+              'name': customer!.name,
+              'email': customer!.email,
+              'phone': customer!.phone,
+              'imageUrl': customer!.imageUrl,
+            },
+          },
+        if (latestLocation != null)
+          'locations': [
+            {
+              'lat': latestLocation!.lat,
+              'lng': latestLocation!.lng,
+              if (latestLocation!.recordedAt != null)
+                'recordedAt': latestLocation!.recordedAt!.toIso8601String(),
+            },
+          ],
+      };
 }

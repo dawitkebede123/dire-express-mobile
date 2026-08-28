@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/config.dart';
@@ -64,12 +65,14 @@ class _PodImage extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: bytes != null
           ? Image.memory(bytes, height: height, width: double.infinity, fit: fit)
-          : Image.network(
-              resolved,
+          : CachedNetworkImage(
+              imageUrl: resolved,
               height: height,
               width: double.infinity,
               fit: fit,
-              errorBuilder: (_, _, _) => _placeholder(height),
+              memCacheHeight: (height * 2).round(),
+              errorWidget: (_, _, _) => _placeholder(height),
+              placeholder: (_, _) => _placeholder(height),
             ),
     );
   }

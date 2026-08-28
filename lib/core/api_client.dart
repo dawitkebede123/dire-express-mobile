@@ -33,6 +33,8 @@ class ApiException implements Exception {
 
   bool get isReceiptRequired => code == 'receiptRequired';
   bool get isDeviceIdRequired => code == 'deviceIdRequired';
+  bool get isNoNetwork =>
+      code == 'noNetwork' || code == 'connectionFailed' || code == 'timeout';
 
   @override
   String toString() => message;
@@ -133,9 +135,11 @@ class ApiClient {
       } else if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        message = 'Connection timed out. Is the API running at ${AppConfig.apiBaseUrl}?';
+        code = 'noNetwork';
+        message = 'noNetwork';
       } else if (e.type == DioExceptionType.connectionError) {
-        message = 'Cannot reach API at ${AppConfig.apiBaseUrl}';
+        code = 'noNetwork';
+        message = 'noNetwork';
       }
       if (kDebugMode) {
         final bodyPreview = switch (data) {
@@ -209,6 +213,27 @@ class ApiClient {
     return _stringField(json, 'plateNo') ?? _stringField(json, 'plateNumber');
   }
 
+  double? _numberField(Map<String, dynamic> json, String key) {
+    final value = json[key];
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  ({
+    String? plateNo,
+    String? vehicleType,
+    double? loadingCapacity,
+    String? truckImageUrl,
+  }) _driverFieldsFromMap(Map<String, dynamic> driver) {
+    return (
+      plateNo: _plateField(driver),
+      vehicleType: _stringField(driver, 'vehicleType'),
+      loadingCapacity: _numberField(driver, 'loadingCapacity'),
+      truckImageUrl: _stringField(driver, 'truckImageUrl'),
+    );
+  }
+
   void _mergeDriverFields(Map<String, dynamic> user, Map<String, dynamic> data) {
     final nestedDriver = _asMap(data['driver']).isNotEmpty
         ? _asMap(data['driver'])
@@ -218,8 +243,12 @@ class ApiClient {
     }
     final plate = _plateField(user) ?? _plateField(nestedDriver);
     final vehicle = _stringField(user, 'vehicleType') ?? _stringField(nestedDriver, 'vehicleType');
+    final capacity = _numberField(user, 'loadingCapacity') ?? _numberField(nestedDriver, 'loadingCapacity');
+    final truckImage = _stringField(user, 'truckImageUrl') ?? _stringField(nestedDriver, 'truckImageUrl');
     if (plate != null) user['plateNo'] = plate;
     if (vehicle != null) user['vehicleType'] = vehicle;
+    if (capacity != null) user['loadingCapacity'] = capacity;
+    if (truckImage != null) user['truckImageUrl'] = truckImage;
   }
 
   Map<String, dynamic> _driverMap(Map<String, dynamic> data) {
@@ -367,13 +396,20 @@ class ApiClient {
     String? loadId,
   }) async {
     await _unwrap(
-      _dio.post('/api/drivers/location', data: {
-        'lat': lat,
-        'lng': lng,
-        if (heading != null) 'heading': heading,
-        if (speed != null) 'speed': speed,
-        if (loadId != null) 'loadId': loadId,
-      }),
+      _dio.post(
+        '/api/drivers/location',
+        data: {
+          'lat': lat,
+          'lng': lng,
+          if (heading != null) 'heading': heading,
+          if (speed != null) 'speed': speed,
+          if (loadId != null) 'loadId': loadId,
+        },
+        options: Options(
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      ),
     );
   }
 
@@ -420,30 +456,43 @@ class ApiClient {
     return (company: _stringField(customer, 'company'));
   }
 
-  Future<({String? plateNo, String? vehicleType})> getMyDriverProfile() async {
-    final data = await _unwrap(_dio.get('/api/drivers/me'));
-    final driver = _driverMap(data);
+  Future<({
+    String? plateNo,
+    String? vehicleType,
+    double? loadingCapacity,
+    String? truckImageUrl,
+  })> getMyDriverProfile() async {
+    final user = await getMeProfile();
+    final nestedDriver = _asMap(user['driver']);
+    final fields = _driverFieldsFromMap(nestedDriver.isNotEmpty ? nestedDriver : user);
     return (
-      plateNo: _plateField(driver),
-      vehicleType: _stringField(driver, 'vehicleType'),
+      plateNo: fields.plateNo ?? _plateField(user),
+      vehicleType: fields.vehicleType ?? _stringField(user, 'vehicleType'),
+      loadingCapacity: fields.loadingCapacity ?? _numberField(user, 'loadingCapacity'),
+      truckImageUrl: fields.truckImageUrl ?? _stringField(user, 'truckImageUrl'),
     );
   }
 
-  Future<({String? plateNo, String? vehicleType})> updateMyDriverProfile({
+  Future<({
     String? plateNo,
     String? vehicleType,
+    double? loadingCapacity,
+    String? truckImageUrl,
+  })> updateMyDriverProfile({
+    String? plateNo,
+    String? vehicleType,
+    double? loadingCapacity,
+    String? truckImageUrl,
   }) async {
     final data = await _unwrap(
       _dio.patch('/api/drivers/me', data: {
         if (plateNo != null) 'plateNo': plateNo,
         if (vehicleType != null) 'vehicleType': vehicleType,
+        if (loadingCapacity != null) 'loadingCapacity': loadingCapacity,
+        if (truckImageUrl != null) 'truckImageUrl': truckImageUrl,
       }),
     );
-    final driver = _driverMap(data);
-    return (
-      plateNo: _plateField(driver),
-      vehicleType: _stringField(driver, 'vehicleType'),
-    );
+    return _driverFieldsFromMap(_driverMap(data));
   }
 
   Future<String> uploadFile(String path, {String kind = 'pod'}) async {
@@ -452,7 +501,10 @@ class ApiClient {
       'file': await MultipartFile.fromFile(path),
     });
     final data = await _unwrap(_dio.post('/api/uploads', data: form));
-    final url = AppConfig.resolveMediaUrl(_stringField(data, 'url'));
+    final raw = _stringField(data, 'url');
+    if (raw == null) throw ApiException('Upload failed');
+    if (kind == 'truck') return raw;
+    final url = AppConfig.resolveMediaUrl(raw);
     if (url == null) throw ApiException('Upload failed');
     return url;
   }
@@ -496,6 +548,39 @@ class ApiClient {
   Future<PlaceSuggestion?> geocodePlace(String query) async {
     final results = await geocodeSuggestions(query);
     return results.isEmpty ? null : results.first;
+  }
+
+  Future<PlaceSuggestion?> reverseGeocode(double lat, double lng) async {
+    if (!AppConfig.hasMapbox) return null;
+    try {
+      final res = await Dio().get(
+        'https://api.mapbox.com/geocoding/v5/mapbox.places/$lng,$lat.json',
+        queryParameters: {
+          'access_token': AppConfig.mapboxToken,
+          'limit': 1,
+        },
+      );
+      final features = res.data['features'] as List<dynamic>? ?? [];
+      if (features.isEmpty) {
+        return PlaceSuggestion(
+          placeName: '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+          lat: lat,
+          lng: lng,
+        );
+      }
+      return _placeFromFeature(features.first) ??
+          PlaceSuggestion(
+            placeName: '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+            lat: lat,
+            lng: lng,
+          );
+    } catch (_) {
+      return PlaceSuggestion(
+        placeName: '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+        lat: lat,
+        lng: lng,
+      );
+    }
   }
 
   /// Driving distance in km. Falls back to straight-line if Directions fails.
