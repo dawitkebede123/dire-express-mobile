@@ -111,7 +111,7 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get landingCopy =>
-      'ድሬ ኤክስፕረስ ደላሎችን፣ ሹፌሮችን እና ላኪዎችን በአንድ የሞባይል መድረክ ያገናኛል — ከጭነት ቦታ ማስያዝ እስከ ጭነቱን ወደታቀደለት መዳረሻ መድረሱን ማረጋገጫ እስከመስጠት ይጠቀሙበታል።';
+      'ድሬ ኤክስፕረስ ወኪሎችን፣ ሹፌሮችን እና ላኪዎችን በአንድ የሞባይል መድረክ ያገናኛል — ከጭነት ቦታ ማስያዝ እስከ ጭነቱን ወደታቀደለት መዳረሻ መድረሱን ማረጋገጫ እስከመስጠት ይጠቀሙበታል።';
 
   @override
   String get landingCta => 'ተመዝገብ';
@@ -170,9 +170,6 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get loginCreateOne => 'አንድ ይፍጠሩ';
-
-  @override
-  String get loginDemo => 'የማሳያ መለያዎች — የይለፍ ቃል: password123';
 
   @override
   String get registerTitle => 'መለያዎን ይፍጠሩ';
@@ -281,6 +278,41 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get profileCropPhoto => 'አንቀሳቅስ እና መጠን ቀይር';
+
+  @override
+  String get profileMore => 'ተጨማሪ';
+
+  @override
+  String get profileMoreTitle => 'ተጨማሪ';
+
+  @override
+  String get profileDeleteAccount => 'መለያ ሰርዝ';
+
+  @override
+  String get profileDeleteAccountWarningTitle => 'መለያዎን ይሰረዝ?';
+
+  @override
+  String get profileDeleteAccountWarningBody =>
+      'ይህ እርግጠኛ ነው። ክፍት ጭነቶች ሲኖሩዎት መለያዎን መሰረዝ አይችሉም። ለሌሎች ወገኖች የጭነት ታሪክ ይቀራል።';
+
+  @override
+  String get profileDeleteAccountPasswordTitle => 'የይለፍ ቃል አረጋግጥ';
+
+  @override
+  String get profileDeleteAccountPasswordHint => 'የአሁኑ የይለፍ ቃል';
+
+  @override
+  String get profileDeleteAccountConfirm => 'በዘላለም ሰርዝ';
+
+  @override
+  String get toastAccountDeleted => 'መለያ ተሰርዟል';
+
+  @override
+  String get toastActiveLoadsExist =>
+      'መለያዎን ከመሰረዝዎ በፊት ክፍት ጭነቶችን ያጠናቅቁ ወይም ይሰርዙ';
+
+  @override
+  String get toastInvalidPassword => 'የተሳሳተ የይለፍ ቃል';
 
   @override
   String get statusPending => 'በመጠባበቅ ላይ';
@@ -502,6 +534,15 @@ class AppLocalizationsAm extends AppLocalizations {
   String get toastLoadCreated => 'ጭነት ተፈጥሯል';
 
   @override
+  String get toastLoadUpdated => 'ጭነት ተዘምኗል';
+
+  @override
+  String get toastLoadUpdateFailed => 'ጭነት ማዘመን አልተሳካም';
+
+  @override
+  String get brokerEditLoad => 'ጭነት አርትዕ';
+
+  @override
   String get toastReceiptRequired => 'ተጨማሪ ጭነቶችን ለመፍጠር የክፍያ ደረሰኝ ያያይዙ';
 
   @override
@@ -537,6 +578,63 @@ class AppLocalizationsAm extends AppLocalizations {
   String get toastDriverAssigned => 'ሹፌር ተመድቧል';
 
   @override
+  String get brokerRequestDeletion => 'ጭነት ሰርዝ';
+
+  @override
+  String get brokerDeletionPending => 'መሰረዝ ተጠይቋል — የደንበኛ ምርጫ በመጠባበቅ ላይ';
+
+  @override
+  String get brokerDeletionConfirmTitle => 'ይህን ጭነት መሰረዝ ይጠየቅ?';
+
+  @override
+  String get brokerDeletionConfirmBody => 'ጭነቱ ከመወገዱ በፊት ደንበኛው መፈቀድ አለበት።';
+
+  @override
+  String get toastDeletionRequested => 'የመሰረዝ ጥያቄ ተልኳል';
+
+  @override
+  String get toastCannotRequestDeletion =>
+      'ይህ ጭነት መሰረዝ አይችልም (ተሰጥቷል ወይም ቀድሞ ተጠይቋል)';
+
+  @override
+  String get brokerCancelDeletion => 'የመሰረዝ ጥያቄ ይቅር';
+
+  @override
+  String get brokerCancelDeletionConfirmTitle => 'የመሰረዝ ጥያቄ ይቅር?';
+
+  @override
+  String get brokerCancelDeletionConfirmBody =>
+      'ጭነቱ ንቁ ይቆያል። ደንበኛው መሰረዝ ለማፅደቅ አይጠየቅም።';
+
+  @override
+  String get toastDeletionCancelled => 'የመሰረዝ ጥያቄ ተቀርቷል';
+
+  @override
+  String get customerDeletionRequestTitle => 'ወኪሉ ይህን ጭነት መሰረዝ ጠይቋል';
+
+  @override
+  String get customerDeletionRequestBody =>
+      'ጭነቱን ለማስወገድ ይፈቅዱ፣ ወይም ለመቀጠል ይከልክሉ።';
+
+  @override
+  String get customerApproveDeletion => 'መሰረዝ ፍቀድ';
+
+  @override
+  String get customerRejectDeletion => 'ከልክል';
+
+  @override
+  String get toastDeletionApproved => 'ጭነቱ ተሰርዟል';
+
+  @override
+  String get toastDeletionRejected => 'የመሰረዝ ጥያቄ ተከልክሏል';
+
+  @override
+  String get toastNoDeletionPending => 'በመጠባበቅ ላይ ያለ የመሰረዝ ጥያቄ የለም';
+
+  @override
+  String get loadDeletionPending => 'መሰረዝ በመጠባበቅ ላይ';
+
+  @override
   String get toastNewLoadUpdate => 'አዲስ የጭነት ዝማኔ';
 
   @override
@@ -570,10 +668,34 @@ class AppLocalizationsAm extends AppLocalizations {
   String get toastPhotoUploaded => 'ፎቶ ተሰቅሏል';
 
   @override
-  String get toastUploadFailed => 'መስቀል አልተሳካም';
+  String get toastUploadFailed => 'ፋይል ማያያዝ አልተሳካም';
+
+  @override
+  String get toastDocumentOpenFailed => 'ሰነዱን መክፈት አልተቻለም';
+
+  @override
+  String get toastDocumentsMaxReached => 'እስከ 5 ሰነዶች መያያዝ ይችላሉ';
+
+  @override
+  String get toastDocumentUploaded => 'ሰነድ ተሰቅሏል';
+
+  @override
+  String get loadDocumentsTitle => 'ሰነዶች';
+
+  @override
+  String get loadDocumentsEmpty => 'ምንም ሰነድ አልተያያዘም';
+
+  @override
+  String get loadDocumentsAdd => 'ሰነድ ጨምር';
+
+  @override
+  String get loadDocumentsHint => 'PDF ወይም ምስል (አማራጭ)';
 
   @override
   String get toastRequestFailed => 'ጥያቄ ማስገባት አልተሳካም';
+
+  @override
+  String get toastCargoRequired => 'የጭነት መግለጫ ያስፈልጋል';
 
   @override
   String get toastRequestSubmitted => 'የመጓጓዣ ጥያቄ ገብቷል';
@@ -607,6 +729,9 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get brokerTotalRevenue => 'ጠቅላላ ገቢ';
+
+  @override
+  String get brokerTotalLoads => 'ጠቅላላ ጭነቶች';
 
   @override
   String brokerLoadsDelivered(int count) {
@@ -683,7 +808,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get brokerDeliveryDate => 'የማድረሻ ቀን';
 
   @override
-  String get brokerCargoDescription => 'የጭነት መግለጫ (አማራጭ)';
+  String get brokerCargoDescription => 'የጭነት መግለጫ';
 
   @override
   String get brokerNotes => 'ማስታወሻዎች';
@@ -875,6 +1000,18 @@ class AppLocalizationsAm extends AppLocalizations {
   String driverAvailableCount(int count) {
     return 'ይገኛል ($count)';
   }
+
+  @override
+  String get driverAvailabilityAvailable => 'ይገኛል';
+
+  @override
+  String get driverAvailabilityUnavailable => 'አይገኝም';
+
+  @override
+  String get driverAvailabilityLabel => 'መገኘት';
+
+  @override
+  String get driverAvailabilityHint => 'ሲጠፋ ወኪሎች ለአዲስ ጭነት አያዩዎትም';
 
   @override
   String get driverLoadingLoads => 'ጭነቶች በመጫን ላይ...';

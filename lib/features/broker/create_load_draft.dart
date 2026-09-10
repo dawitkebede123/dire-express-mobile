@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/load.dart';
 import '../../shared/system_price.dart';
 
 class CreateLoadDraft {
@@ -20,6 +21,7 @@ class CreateLoadDraft {
     this.distanceKm,
     this.systemPrice,
     this.paymentReceiptUrl,
+    this.documents = const [],
   });
 
   final int step;
@@ -38,6 +40,7 @@ class CreateLoadDraft {
   final double? distanceKm;
   final double? systemPrice;
   final String? paymentReceiptUrl;
+  final List<LoadDocument> documents;
 }
 
 final createLoadDraftProvider = StateProvider.family<CreateLoadDraft?, bool>((ref, asCustomer) => null);

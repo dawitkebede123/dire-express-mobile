@@ -203,7 +203,7 @@ abstract class AppLocalizations {
   /// No description provided for @roleBroker.
   ///
   /// In en, this message translates to:
-  /// **'Broker'**
+  /// **'Agent'**
   String get roleBroker;
 
   /// No description provided for @roleDriver.
@@ -287,7 +287,7 @@ abstract class AppLocalizations {
   /// No description provided for @landingBadge.
   ///
   /// In en, this message translates to:
-  /// **'Digital freight brokerage'**
+  /// **'Digital freight agency'**
   String get landingBadge;
 
   /// No description provided for @landingTitle.
@@ -299,7 +299,7 @@ abstract class AppLocalizations {
   /// No description provided for @landingCopy.
   ///
   /// In en, this message translates to:
-  /// **'Dire Express connects brokers, drivers, and shippers on a single mobile-first platform — from booking a load to signing for it at the dock.'**
+  /// **'Dire Express connects agents, drivers, and shippers on a single mobile-first platform — from booking a load to signing for it at the dock.'**
   String get landingCopy;
 
   /// No description provided for @landingCta.
@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// No description provided for @landingBookCopy.
   ///
   /// In en, this message translates to:
-  /// **'A customer requests transport, or a broker creates the load directly.'**
+  /// **'A customer requests transport, or an agent creates the load directly.'**
   String get landingBookCopy;
 
   /// No description provided for @landingDispatchTitle.
@@ -347,7 +347,7 @@ abstract class AppLocalizations {
   /// No description provided for @landingDispatchCopy.
   ///
   /// In en, this message translates to:
-  /// **'The broker assigns a driver, who accepts and starts the trip from their phone.'**
+  /// **'The agent assigns a driver, who accepts and starts the trip from their phone.'**
   String get landingDispatchCopy;
 
   /// No description provided for @landingDeliverTitle.
@@ -415,12 +415,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create one'**
   String get loginCreateOne;
-
-  /// No description provided for @loginDemo.
-  ///
-  /// In en, this message translates to:
-  /// **'Demo accounts — password: password123'**
-  String get loginDemo;
 
   /// No description provided for @registerTitle.
   ///
@@ -575,7 +569,7 @@ abstract class AppLocalizations {
   /// No description provided for @registerAgentIdPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'Paste the broker\'s Agent ID'**
+  /// **'Paste the agent\'s ID'**
   String get registerAgentIdPlaceholder;
 
   /// No description provided for @profileTitle.
@@ -637,6 +631,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Move and scale'**
   String get profileCropPhoto;
+
+  /// No description provided for @profileMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get profileMore;
+
+  /// No description provided for @profileMoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get profileMoreTitle;
+
+  /// No description provided for @profileDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get profileDeleteAccount;
+
+  /// No description provided for @profileDeleteAccountWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get profileDeleteAccountWarningTitle;
+
+  /// No description provided for @profileDeleteAccountWarningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This is permanent. You cannot delete your account while you have open loads. Your load history for other parties is kept.'**
+  String get profileDeleteAccountWarningBody;
+
+  /// No description provided for @profileDeleteAccountPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get profileDeleteAccountPasswordTitle;
+
+  /// No description provided for @profileDeleteAccountPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get profileDeleteAccountPasswordHint;
+
+  /// No description provided for @profileDeleteAccountConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get profileDeleteAccountConfirm;
+
+  /// No description provided for @toastAccountDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deleted'**
+  String get toastAccountDeleted;
+
+  /// No description provided for @toastActiveLoadsExist.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish or cancel open loads before deleting your account'**
+  String get toastActiveLoadsExist;
+
+  /// No description provided for @toastInvalidPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect password'**
+  String get toastInvalidPassword;
 
   /// No description provided for @statusPending.
   ///
@@ -1040,6 +1100,24 @@ abstract class AppLocalizations {
   /// **'Load created'**
   String get toastLoadCreated;
 
+  /// No description provided for @toastLoadUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Load updated'**
+  String get toastLoadUpdated;
+
+  /// No description provided for @toastLoadUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update load'**
+  String get toastLoadUpdateFailed;
+
+  /// No description provided for @brokerEditLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Load'**
+  String get brokerEditLoad;
+
   /// No description provided for @toastReceiptRequired.
   ///
   /// In en, this message translates to:
@@ -1105,6 +1183,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Driver assigned'**
   String get toastDriverAssigned;
+
+  /// No description provided for @brokerRequestDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Request deletion'**
+  String get brokerRequestDeletion;
+
+  /// No description provided for @brokerDeletionPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion requested — awaiting customer approval'**
+  String get brokerDeletionPending;
+
+  /// No description provided for @brokerDeletionConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Request load deletion?'**
+  String get brokerDeletionConfirmTitle;
+
+  /// No description provided for @brokerDeletionConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The customer must approve before this load is removed.'**
+  String get brokerDeletionConfirmBody;
+
+  /// No description provided for @toastDeletionRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion request sent'**
+  String get toastDeletionRequested;
+
+  /// No description provided for @toastCannotRequestDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'This load cannot be deleted (delivered or already pending)'**
+  String get toastCannotRequestDeletion;
+
+  /// No description provided for @brokerCancelDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel deletion request'**
+  String get brokerCancelDeletion;
+
+  /// No description provided for @brokerCancelDeletionConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel deletion request?'**
+  String get brokerCancelDeletionConfirmTitle;
+
+  /// No description provided for @brokerCancelDeletionConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The load will stay active. The customer will no longer be asked to approve deletion.'**
+  String get brokerCancelDeletionConfirmBody;
+
+  /// No description provided for @toastDeletionCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion request cancelled'**
+  String get toastDeletionCancelled;
+
+  /// No description provided for @customerDeletionRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent requested to delete this load'**
+  String get customerDeletionRequestTitle;
+
+  /// No description provided for @customerDeletionRequestBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve to remove the load, or reject to keep it active.'**
+  String get customerDeletionRequestBody;
+
+  /// No description provided for @customerApproveDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve deletion'**
+  String get customerApproveDeletion;
+
+  /// No description provided for @customerRejectDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get customerRejectDeletion;
+
+  /// No description provided for @toastDeletionApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Load deleted'**
+  String get toastDeletionApproved;
+
+  /// No description provided for @toastDeletionRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion request rejected'**
+  String get toastDeletionRejected;
+
+  /// No description provided for @toastNoDeletionPending.
+  ///
+  /// In en, this message translates to:
+  /// **'No deletion request is pending'**
+  String get toastNoDeletionPending;
+
+  /// No description provided for @loadDeletionPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletion pending'**
+  String get loadDeletionPending;
 
   /// No description provided for @toastNewLoadUpdate.
   ///
@@ -1178,11 +1364,59 @@ abstract class AppLocalizations {
   /// **'Upload failed'**
   String get toastUploadFailed;
 
+  /// No description provided for @toastDocumentOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open document'**
+  String get toastDocumentOpenFailed;
+
+  /// No description provided for @toastDocumentsMaxReached.
+  ///
+  /// In en, this message translates to:
+  /// **'You can attach up to 5 documents'**
+  String get toastDocumentsMaxReached;
+
+  /// No description provided for @toastDocumentUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Document uploaded'**
+  String get toastDocumentUploaded;
+
+  /// No description provided for @loadDocumentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents'**
+  String get loadDocumentsTitle;
+
+  /// No description provided for @loadDocumentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No documents attached'**
+  String get loadDocumentsEmpty;
+
+  /// No description provided for @loadDocumentsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add document'**
+  String get loadDocumentsAdd;
+
+  /// No description provided for @loadDocumentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF or image (optional)'**
+  String get loadDocumentsHint;
+
   /// No description provided for @toastRequestFailed.
   ///
   /// In en, this message translates to:
   /// **'Failed to submit request'**
   String get toastRequestFailed;
+
+  /// No description provided for @toastCargoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Cargo description is required'**
+  String get toastCargoRequired;
 
   /// No description provided for @toastRequestSubmitted.
   ///
@@ -1235,13 +1469,13 @@ abstract class AppLocalizations {
   /// No description provided for @brokerDashboardTitle.
   ///
   /// In en, this message translates to:
-  /// **'Broker Dashboard'**
+  /// **'Agent Dashboard'**
   String get brokerDashboardTitle;
 
   /// No description provided for @brokerProfileNotFound.
   ///
   /// In en, this message translates to:
-  /// **'Broker profile not found.'**
+  /// **'Agent profile not found.'**
   String get brokerProfileNotFound;
 
   /// No description provided for @brokerTotalRevenue.
@@ -1249,6 +1483,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total Revenue'**
   String get brokerTotalRevenue;
+
+  /// No description provided for @brokerTotalLoads.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Loads'**
+  String get brokerTotalLoads;
 
   /// No description provided for @brokerLoadsDelivered.
   ///
@@ -1397,7 +1637,7 @@ abstract class AppLocalizations {
   /// No description provided for @brokerCargoDescription.
   ///
   /// In en, this message translates to:
-  /// **'Cargo description (Optional)'**
+  /// **'Cargo description'**
   String get brokerCargoDescription;
 
   /// No description provided for @brokerNotes.
@@ -1748,6 +1988,30 @@ abstract class AppLocalizations {
   /// **'Available ({count})'**
   String driverAvailableCount(int count);
 
+  /// No description provided for @driverAvailabilityAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get driverAvailabilityAvailable;
+
+  /// No description provided for @driverAvailabilityUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get driverAvailabilityUnavailable;
+
+  /// No description provided for @driverAvailabilityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Availability'**
+  String get driverAvailabilityLabel;
+
+  /// No description provided for @driverAvailabilityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When off, agents won\'t see you for new assignments'**
+  String get driverAvailabilityHint;
+
   /// No description provided for @driverLoadingLoads.
   ///
   /// In en, this message translates to:
@@ -1763,7 +2027,7 @@ abstract class AppLocalizations {
   /// No description provided for @driverEmptyAvailableHint.
   ///
   /// In en, this message translates to:
-  /// **'New assignments from your broker will appear here.'**
+  /// **'New assignments from your agent will appear here.'**
   String get driverEmptyAvailableHint;
 
   /// No description provided for @driverEmptyTrips.
@@ -1901,7 +2165,7 @@ abstract class AppLocalizations {
   /// No description provided for @driverGpsHint.
   ///
   /// In en, this message translates to:
-  /// **'Your location is shared with the broker and customer.'**
+  /// **'Your location is shared with the agent and customer.'**
   String get driverGpsHint;
 
   /// No description provided for @driverUploading.
@@ -1991,7 +2255,7 @@ abstract class AppLocalizations {
   /// No description provided for @driverGpsDenied.
   ///
   /// In en, this message translates to:
-  /// **'Location permission denied. Enable it so the broker can track this trip.'**
+  /// **'Location permission denied. Enable it so the agent can track this trip.'**
   String get driverGpsDenied;
 
   /// No description provided for @driverGpsReadFailed.
@@ -2075,7 +2339,7 @@ abstract class AppLocalizations {
   /// No description provided for @customerTrackEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Request a shipment or wait for your broker to create one. Active loads appear here for live tracking.'**
+  /// **'Request a shipment or wait for your agent to create one. Active loads appear here for live tracking.'**
   String get customerTrackEmptyHint;
 
   /// No description provided for @customerRequestTransport.

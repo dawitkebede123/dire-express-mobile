@@ -62,7 +62,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get roleBroker => 'Broker';
+  String get roleBroker => 'Agent';
 
   @override
   String get roleDriver => 'Driver';
@@ -104,14 +104,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonNoNotifications => 'No notifications yet.';
 
   @override
-  String get landingBadge => 'Digital freight brokerage';
+  String get landingBadge => 'Digital freight agency';
 
   @override
   String get landingTitle => 'Every load, every driver, one live view.';
 
   @override
   String get landingCopy =>
-      'Dire Express connects brokers, drivers, and shippers on a single mobile-first platform — from booking a load to signing for it at the dock.';
+      'Dire Express connects agents, drivers, and shippers on a single mobile-first platform — from booking a load to signing for it at the dock.';
 
   @override
   String get landingCta => 'Start moving freight';
@@ -130,14 +130,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get landingBookCopy =>
-      'A customer requests transport, or a broker creates the load directly.';
+      'A customer requests transport, or an agent creates the load directly.';
 
   @override
   String get landingDispatchTitle => 'Dispatch';
 
   @override
   String get landingDispatchCopy =>
-      'The broker assigns a driver, who accepts and starts the trip from their phone.';
+      'The agent assigns a driver, who accepts and starts the trip from their phone.';
 
   @override
   String get landingDeliverTitle => 'Deliver';
@@ -172,9 +172,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loginCreateOne => 'Create one';
-
-  @override
-  String get loginDemo => 'Demo accounts — password: password123';
 
   @override
   String get registerTitle => 'Create your account';
@@ -253,7 +250,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registerAgentId => 'Agent ID';
 
   @override
-  String get registerAgentIdPlaceholder => 'Paste the broker\'s Agent ID';
+  String get registerAgentIdPlaceholder => 'Paste the agent\'s ID';
 
   @override
   String get profileTitle => 'Profile';
@@ -284,6 +281,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileCropPhoto => 'Move and scale';
+
+  @override
+  String get profileMore => 'More';
+
+  @override
+  String get profileMoreTitle => 'More';
+
+  @override
+  String get profileDeleteAccount => 'Delete account';
+
+  @override
+  String get profileDeleteAccountWarningTitle => 'Delete your account?';
+
+  @override
+  String get profileDeleteAccountWarningBody =>
+      'This is permanent. You cannot delete your account while you have open loads. Your load history for other parties is kept.';
+
+  @override
+  String get profileDeleteAccountPasswordTitle => 'Confirm password';
+
+  @override
+  String get profileDeleteAccountPasswordHint => 'Current password';
+
+  @override
+  String get profileDeleteAccountConfirm => 'Delete permanently';
+
+  @override
+  String get toastAccountDeleted => 'Account deleted';
+
+  @override
+  String get toastActiveLoadsExist =>
+      'Finish or cancel open loads before deleting your account';
+
+  @override
+  String get toastInvalidPassword => 'Incorrect password';
 
   @override
   String get statusPending => 'Pending';
@@ -510,6 +542,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toastLoadCreated => 'Load created';
 
   @override
+  String get toastLoadUpdated => 'Load updated';
+
+  @override
+  String get toastLoadUpdateFailed => 'Failed to update load';
+
+  @override
+  String get brokerEditLoad => 'Edit Load';
+
+  @override
   String get toastReceiptRequired =>
       'Upload a payment receipt to create more loads';
 
@@ -546,6 +587,66 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get toastDriverAssigned => 'Driver assigned';
+
+  @override
+  String get brokerRequestDeletion => 'Request deletion';
+
+  @override
+  String get brokerDeletionPending =>
+      'Deletion requested — awaiting customer approval';
+
+  @override
+  String get brokerDeletionConfirmTitle => 'Request load deletion?';
+
+  @override
+  String get brokerDeletionConfirmBody =>
+      'The customer must approve before this load is removed.';
+
+  @override
+  String get toastDeletionRequested => 'Deletion request sent';
+
+  @override
+  String get toastCannotRequestDeletion =>
+      'This load cannot be deleted (delivered or already pending)';
+
+  @override
+  String get brokerCancelDeletion => 'Cancel deletion request';
+
+  @override
+  String get brokerCancelDeletionConfirmTitle => 'Cancel deletion request?';
+
+  @override
+  String get brokerCancelDeletionConfirmBody =>
+      'The load will stay active. The customer will no longer be asked to approve deletion.';
+
+  @override
+  String get toastDeletionCancelled => 'Deletion request cancelled';
+
+  @override
+  String get customerDeletionRequestTitle =>
+      'Agent requested to delete this load';
+
+  @override
+  String get customerDeletionRequestBody =>
+      'Approve to remove the load, or reject to keep it active.';
+
+  @override
+  String get customerApproveDeletion => 'Approve deletion';
+
+  @override
+  String get customerRejectDeletion => 'Reject';
+
+  @override
+  String get toastDeletionApproved => 'Load deleted';
+
+  @override
+  String get toastDeletionRejected => 'Deletion request rejected';
+
+  @override
+  String get toastNoDeletionPending => 'No deletion request is pending';
+
+  @override
+  String get loadDeletionPending => 'Deletion pending';
 
   @override
   String get toastNewLoadUpdate => 'New load update';
@@ -586,7 +687,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toastUploadFailed => 'Upload failed';
 
   @override
+  String get toastDocumentOpenFailed => 'Could not open document';
+
+  @override
+  String get toastDocumentsMaxReached => 'You can attach up to 5 documents';
+
+  @override
+  String get toastDocumentUploaded => 'Document uploaded';
+
+  @override
+  String get loadDocumentsTitle => 'Documents';
+
+  @override
+  String get loadDocumentsEmpty => 'No documents attached';
+
+  @override
+  String get loadDocumentsAdd => 'Add document';
+
+  @override
+  String get loadDocumentsHint => 'PDF or image (optional)';
+
+  @override
   String get toastRequestFailed => 'Failed to submit request';
+
+  @override
+  String get toastCargoRequired => 'Cargo description is required';
 
   @override
   String get toastRequestSubmitted => 'Transport request submitted';
@@ -613,13 +738,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapCollapse => 'Collapse map';
 
   @override
-  String get brokerDashboardTitle => 'Broker Dashboard';
+  String get brokerDashboardTitle => 'Agent Dashboard';
 
   @override
-  String get brokerProfileNotFound => 'Broker profile not found.';
+  String get brokerProfileNotFound => 'Agent profile not found.';
 
   @override
   String get brokerTotalRevenue => 'Total Revenue';
+
+  @override
+  String get brokerTotalLoads => 'Total Loads';
 
   @override
   String brokerLoadsDelivered(int count) {
@@ -697,7 +825,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brokerDeliveryDate => 'Delivery date';
 
   @override
-  String get brokerCargoDescription => 'Cargo description (Optional)';
+  String get brokerCargoDescription => 'Cargo description';
 
   @override
   String get brokerNotes => 'Notes';
@@ -891,6 +1019,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get driverAvailabilityAvailable => 'Available';
+
+  @override
+  String get driverAvailabilityUnavailable => 'Unavailable';
+
+  @override
+  String get driverAvailabilityLabel => 'Availability';
+
+  @override
+  String get driverAvailabilityHint =>
+      'When off, agents won\'t see you for new assignments';
+
+  @override
   String get driverLoadingLoads => 'Loading loads...';
 
   @override
@@ -898,7 +1039,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get driverEmptyAvailableHint =>
-      'New assignments from your broker will appear here.';
+      'New assignments from your agent will appear here.';
 
   @override
   String get driverEmptyTrips => 'No trips yet';
@@ -972,7 +1113,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get driverGpsHint =>
-      'Your location is shared with the broker and customer.';
+      'Your location is shared with the agent and customer.';
 
   @override
   String get driverUploading => 'Uploading...';
@@ -1020,7 +1161,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get driverGpsDenied =>
-      'Location permission denied. Enable it so the broker can track this trip.';
+      'Location permission denied. Enable it so the agent can track this trip.';
 
   @override
   String driverGpsReadFailed(String message) {
@@ -1065,7 +1206,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get customerTrackEmptyHint =>
-      'Request a shipment or wait for your broker to create one. Active loads appear here for live tracking.';
+      'Request a shipment or wait for your agent to create one. Active loads appear here for live tracking.';
 
   @override
   String get customerRequestTransport => 'Request transport';

@@ -44,6 +44,7 @@ class GpsService {
     final sameNotification =
         _notificationTitle == notificationTitle && _notificationText == notificationText;
     if (isWatching && sameNotification) {
+      await _postImmediateLocations();
       return null;
     }
 
@@ -64,17 +65,7 @@ class GpsService {
       _notificationTitle = notificationTitle;
       _notificationText = notificationText;
 
-      try {
-        final lastKnown = await Geolocator.getLastKnownPosition();
-        if (lastKnown != null) unawaited(_send(lastKnown));
-      } catch (_) {}
-
-      try {
-        final current = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(timeLimit: Duration(seconds: 8)),
-        );
-        unawaited(_send(current));
-      } catch (_) {}
+      await _postImmediateLocations();
 
       _watch = Geolocator.getPositionStream(
         locationSettings: _locationSettings(title: notificationTitle, text: notificationText),
@@ -97,6 +88,25 @@ class GpsService {
       _starting = false;
     }
   }
+
+  Future<void> _postImmediateLocations() async {
+    try {
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) unawaited(_send(lastKnown));
+    } catch (_) {}
+
+    try {
+      final current = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      unawaited(_send(current));
+    } catch (_) {}
+  }
+
+  Future<String?> prepareTracking() => _ensurePermission();
 
   Future<String?> _ensurePermission() async {
     final enabled = await Geolocator.isLocationServiceEnabled();
@@ -236,20 +246,20 @@ class GpsService {
   }
 
   /// Post the current device position immediately (e.g. right after trip start).
-  Future<void> sendCurrentPosition() async {
+  Future<void> sendCurrentPosition({bool forceFresh = false}) async {
     if (_loadIds.isEmpty) return;
 
     try {
       final lastKnown = await Geolocator.getLastKnownPosition();
-      if (lastKnown != null) {
-        await _send(lastKnown);
-        return;
-      }
+      if (lastKnown != null) unawaited(_send(lastKnown));
     } catch (_) {}
 
     try {
       final current = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(timeLimit: Duration(seconds: 8)),
+        locationSettings: LocationSettings(
+          accuracy: forceFresh ? LocationAccuracy.bestForNavigation : LocationAccuracy.high,
+          timeLimit: Duration(seconds: forceFresh ? 15 : 8),
+        ),
       );
       await _send(current);
     } catch (_) {}
@@ -310,8 +320,10 @@ class DriverLocationController extends Notifier<Set<String>> {
     await _ensureWatching(next);
   }
 
+  Future<String?> prepareTracking() => _gps.prepareTracking();
+
   /// Start GPS tracking for a trip: cache load, watch position, post immediately.
-  Future<void> beginTrip(String loadId, {FreightLoad? load}) async {
+  Future<String?> beginTrip(String loadId, {FreightLoad? load}) async {
     final next = {...state, loadId};
     state = next;
     final cache = DriverPositionCache.instance;
@@ -319,8 +331,10 @@ class DriverLocationController extends Notifier<Set<String>> {
       await cache.saveFromLoad(load);
       await cache.saveTransitIds({loadId});
     }
-    await _ensureWatching(next);
-    await _gps.sendCurrentPosition();
+    final error = await _ensureWatching(next);
+    if (error != null) return error;
+    await _gps.sendCurrentPosition(forceFresh: true);
+    return null;
   }
 
   /// Force a GPS sync and one fresh location post (e.g. when reopening a trip).
@@ -328,7 +342,7 @@ class DriverLocationController extends Notifier<Set<String>> {
     await sync();
     if (state.isEmpty) return;
     await _ensureWatching(state);
-    await _gps.sendCurrentPosition();
+    await _gps.sendCurrentPosition(forceFresh: true);
   }
 
   Future<void> sync() async {
@@ -341,13 +355,10 @@ class DriverLocationController extends Notifier<Set<String>> {
     _syncing = true;
     final cache = DriverPositionCache.instance;
     try {
-      List<FreightLoad> loads;
-      try {
-        loads = await ref.read(apiClientProvider).listLoads(status: 'IN_TRANSIT');
-      } catch (_) {
-        loads = await ref.read(apiClientProvider).listLoads();
-      }
-      final activeLoads = loads.where((l) => l.status == 'IN_TRANSIT').toList();
+      final loads = await ref.read(apiClientProvider).listLoads();
+      final activeLoads = loads
+          .where((l) => l.status == 'IN_TRANSIT' || l.status == 'ACCEPTED')
+          .toList();
       final ids = activeLoads.map((l) => l.id).toSet();
       await cache.saveTransitIds(ids);
       if (activeLoads.isNotEmpty) {
@@ -380,13 +391,13 @@ class DriverLocationController extends Notifier<Set<String>> {
     await _gps.stop();
   }
 
-  Future<void> _ensureWatching(Set<String> ids) async {
+  Future<String?> _ensureWatching(Set<String> ids) async {
     if (ids.isEmpty) {
       await _gps.stop();
-      return;
+      return null;
     }
     final l10n = lookupAppLocalizations(ref.read(localeControllerProvider));
-    await _gps.start(
+    return _gps.start(
       api: ref.read(apiClientProvider),
       loadIds: ids,
       notificationTitle: l10n.driverGpsActive,

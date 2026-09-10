@@ -7,15 +7,23 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:signature/signature.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
 import '../../core/driver_position_cache.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
+import '../../models/user.dart';
 import '../../shared/format.dart';
+import '../../shared/media/load_document_upload.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/equipment_thumb.dart';
+import '../../shared/widgets/load_documents_section.dart';
+import '../../shared/widgets/person_avatar.dart';
 import '../../shared/widgets/pod_documents.dart';
+import '../../shared/widgets/route_timeline.dart';
 import '../../shared/widgets/status_chip.dart';
+import '../../shared/widgets/tracking_timeline.dart';
 import '../../theme/app_theme.dart';
 import '../maps/trip_map.dart';
 import '../notifications/pusher_service.dart';
@@ -35,6 +43,8 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
   LatLng? _driverPoint;
   var _busy = false;
   var _submitted = false;
+  var _uploadingDocument = false;
+  List<LoadDocument> _documents = [];
   Timer? _driverPointTimer;
   XFile? _photo;
   String? _photoUrl;
@@ -89,21 +99,63 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
       if (!mounted) return;
       setState(() {
         _load = load;
+        if (load.documents.isNotEmpty) _documents = load.documents;
         if (load.latestLocation != null) {
           _driverPoint = LatLng(load.latestLocation!.lat, load.latestLocation!.lng);
         }
       });
+      unawaited(_ensureDocuments(load));
       unawaited(DriverPositionCache.instance.saveFromLoad(load));
       try {
         final loc = await ref.read(apiClientProvider).getLocation(loadId: widget.loadId);
         if (!mounted || loc == null) return;
         setState(() => _driverPoint = LatLng(loc.lat, loc.lng));
       } catch (_) {}
-      if (load.status == 'IN_TRANSIT') {
+      if (load.status == 'IN_TRANSIT' || load.status == 'ACCEPTED') {
         unawaited(_refreshDriverPoint());
         _startDriverPointTimer();
+        if (load.status == 'ACCEPTED') {
+          final tracked = ref.read(driverLocationControllerProvider);
+          if (tracked.contains(load.id)) {
+            unawaited(ref.read(driverLocationControllerProvider.notifier).nudgeLocation());
+          } else {
+            unawaited(ref.read(driverLocationControllerProvider.notifier).prepareTracking());
+          }
+        }
       }
     } catch (_) {}
+  }
+
+  Future<void> _ensureDocuments(FreightLoad load) async {
+    if (load.documents.isNotEmpty) return;
+    try {
+      final docs = await ref.read(apiClientProvider).listLoadDocuments(widget.loadId);
+      if (!mounted || docs.isEmpty) return;
+      setState(() => _documents = docs);
+    } catch (_) {}
+  }
+
+  Future<void> _addDocument() async {
+    final l10n = AppLocalizations.of(context);
+    if (_documents.length >= maxLoadDocuments) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDocumentsMaxReached)));
+      return;
+    }
+    setState(() => _uploadingDocument = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final picked = await pickAndUploadLoadDocument(api);
+      if (!mounted || picked == null) return;
+      final saved = await api.addLoadDocument(widget.loadId, url: picked.url, fileName: picked.fileName);
+      if (!mounted) return;
+      setState(() => _documents = [..._documents, saved]);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDocumentUploaded)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastUploadFailed)));
+    } finally {
+      if (mounted) setState(() => _uploadingDocument = false);
+    }
   }
 
   Future<void> _refreshDriverPoint() async {
@@ -125,6 +177,25 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
     _driverPointTimer = null;
   }
 
+  Future<void> _startLocationTracking(FreightLoad load) async {
+    final l10n = AppLocalizations.of(context);
+    final gpsError = await ref.read(driverLocationControllerProvider.notifier).beginTrip(load.id, load: load);
+    if (!mounted) return;
+    if (gpsError == 'denied') {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.driverGpsDenied)));
+    } else if (gpsError == 'unavailable') {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.driverGpsUnavailable)));
+    }
+    final pos = await _gps.currentPosition();
+    if (!mounted) return;
+    if (pos != null) {
+      setState(() => _driverPoint = LatLng(pos.latitude, pos.longitude));
+    } else {
+      await _refreshDriverPoint();
+    }
+    _startDriverPointTimer();
+  }
+
   Future<void> _respond(String action) async {
     final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
@@ -132,6 +203,7 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
       final updated = await ref.read(apiClientProvider).respond(widget.loadId, action);
       if (!mounted) return;
       setState(() => _load = updated);
+      ref.read(loadsRefreshProvider.notifier).state++;
       final msg = switch (action) {
         'accept' => l10n.toastLoadAccepted,
         'reject' => l10n.toastLoadRejected,
@@ -139,10 +211,8 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
         _ => l10n.toastActionFailed,
       };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      if (action == 'start') {
-        await ref.read(driverLocationControllerProvider.notifier).beginTrip(widget.loadId, load: updated);
-        await _refreshDriverPoint();
-        _startDriverPointTimer();
+      if (action == 'accept' || action == 'start') {
+        await _startLocationTracking(updated);
       }
     } catch (_) {
       if (!mounted) return;
@@ -275,7 +345,10 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
     final locale = Localizations.localeOf(context);
     final load = _load;
     if (load == null) {
-      return Scaffold(appBar: AppHeader(title: l10n.driverPodTitle, showBack: true), body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppHeader(title: l10n.brokerLoadDetailTitle, showBack: true),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_submitted) {
@@ -300,12 +373,22 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
     }
 
     final inTransit = load.status == 'IN_TRANSIT';
+    final accepted = load.status == 'ACCEPTED';
+    final showStickyBar = accepted || inTransit;
+    final showTripDetails = const {'ACCEPTED', 'IN_TRANSIT', 'DELIVERED'}.contains(load.status);
+    final weight = formatWeight(load.weightLbs, l10n);
     return Scaffold(
       appBar: AppHeader(title: load.referenceNo, showBack: true, notificationsPath: '/driver/notifications', profilePath: '/driver/profile'),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, inTransit ? 24 : 16),
+        padding: const EdgeInsets.all(16),
         children: [
-          Row(children: [StatusChip(status: load.status), const Spacer(), Text(load.rate == null ? l10n.loadRateTbd : formatCurrency(load.rate, locale), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20))]),
+          Row(
+            children: [
+              Text(load.referenceNo, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700)),
+              const Spacer(),
+              StatusChip(status: load.status),
+            ],
+          ),
           const SizedBox(height: 12),
           TripMap(
             pickup: load.pickupLat != null ? LatLng(load.pickupLat!, load.pickupLng!) : null,
@@ -316,21 +399,141 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
             expandable: true,
           ),
           const SizedBox(height: 12),
-          Text('${l10n.driverDestination}: ${load.deliveryAddress}'),
-          Text('${l10n.driverConsignee}: ${load.customer?.name ?? '—'}'),
-          if (load.proofOfDelivery != null) ...[
-            const SizedBox(height: 16),
-            PodDocuments(pod: load.proofOfDelivery!),
+          if (showTripDetails) ...[
+            TrackingTimeline(load: load),
+            const SizedBox(height: 12),
+            _DetailCard(
+              title: l10n.brokerTripDetails,
+              child: Column(
+                children: [
+                  _detailRow(l10n.brokerConfirmPickup, load.pickupAddress),
+                  _detailRow(l10n.brokerConfirmDelivery, load.deliveryAddress),
+                  _detailRow(l10n.brokerConfirmPickupDate, formatDateTime(load.pickupDate, locale)),
+                  _detailRow(
+                    l10n.customerEstArrival,
+                    load.deliveryDate != null ? formatDateTime(load.deliveryDate!, locale) : l10n.loadScheduled,
+                  ),
+                  _detailRow(
+                    l10n.brokerConfirmRate,
+                    load.rate == null ? l10n.loadRateTbd : formatCurrency(load.rate, locale),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 110,
+                          child: Text(
+                            l10n.brokerConfirmEquipment,
+                            style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13),
+                          ),
+                        ),
+                        Expanded(
+                          child: EquipmentLabelRow(
+                            type: load.equipmentType,
+                            label: equipmentLabel(l10n, load.equipmentType),
+                            thumbSize: 36,
+                            expandLabel: true,
+                            textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _detailRow(l10n.brokerConfirmWeight, formatWeight(load.weightLbs, l10n) ?? '—'),
+                  if (load.cargoDescription != null && load.cargoDescription!.trim().isNotEmpty)
+                    _detailRow(l10n.brokerConfirmCargo, load.cargoDescription!.trim()),
+                  if (load.notes != null && load.notes!.trim().isNotEmpty)
+                    _detailRow(l10n.brokerNotes, load.notes!.trim()),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _CustomerCard(
+              title: l10n.brokerCustomer,
+              person: load.customer,
+              subtitle: load.customerCompany,
+            ),
+            const SizedBox(height: 12),
+            LoadDocumentsSection(
+              documents: _documents,
+              adding: _uploadingDocument,
+              onAdd: _addDocument,
+            ),
+            if (load.proofOfDelivery != null) ...[
+              const SizedBox(height: 12),
+              PodDocuments(pod: load.proofOfDelivery!),
+            ],
           ],
-          const SizedBox(height: 16),
+          if (load.status == 'ASSIGNED') ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.tertiaryFixed,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          children: [
+                            EquipmentThumb(type: load.equipmentType, size: 20, radius: 4),
+                            const SizedBox(width: 6),
+                            Text(
+                              equipmentLabel(l10n, load.equipmentType),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.onTertiaryFixed,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            load.rate != null ? formatCurrency(load.rate, locale) : l10n.loadRateTbd,
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                          ),
+                          if (weight != null)
+                            Text(weight, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  RouteMini(
+                    pickupCity: shortAddress(load.pickupAddress),
+                    pickupTime: formatDayTime(load.pickupDate, l10n, locale),
+                    deliveryCity: shortAddress(load.deliveryAddress),
+                    deliveryTime: load.deliveryDate != null
+                        ? formatDayTime(load.deliveryDate!, l10n, locale)
+                        : l10n.loadDeliveryScheduled,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ] else
+            const SizedBox(height: 16),
           if (load.status == 'ASSIGNED')
             Row(children: [
               Expanded(child: OutlinedButton(onPressed: _busy ? null : () => _respond('reject'), child: Text(l10n.driverReject))),
               const SizedBox(width: 8),
               Expanded(child: FilledButton(onPressed: _busy ? null : () => _respond('accept'), child: Text(l10n.driverAcceptLoad))),
             ]),
-          if (load.status == 'ACCEPTED')
-            FilledButton(onPressed: _busy ? null : () => _respond('start'), child: Text(l10n.driverStartTrip)),
           if (load.status == 'IN_TRANSIT') ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -385,7 +588,7 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
           ],
         ],
       ),
-      bottomNavigationBar: inTransit
+      bottomNavigationBar: showStickyBar
           ? Material(
               color: AppColors.background,
               elevation: 8,
@@ -394,13 +597,109 @@ class _DriverLoadDetailScreenState extends ConsumerState<DriverLoadDetailScreen>
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: FilledButton(
-                    onPressed: _busy ? null : _submitPod,
-                    child: Text(_busy ? l10n.driverProcessing : l10n.driverSubmitPod),
+                    onPressed: _busy
+                        ? null
+                        : () {
+                            if (accepted) {
+                              _respond('start');
+                            } else {
+                              _submitPod();
+                            }
+                          },
+                    child: Text(
+                      _busy
+                          ? (inTransit ? l10n.driverProcessing : l10n.driverStartTrip)
+                          : (accepted ? l10n.driverStartTrip : l10n.driverSubmitPod),
+                    ),
                   ),
                 ),
               ),
             )
           : null,
+    );
+  }
+}
+
+class _DetailCard extends StatelessWidget {
+  const _DetailCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+Widget _detailRow(String label, String value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(label, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
+        ),
+        Expanded(child: Text(value)),
+      ],
+    ),
+  );
+}
+
+class _CustomerCard extends StatelessWidget {
+  const _CustomerCard({required this.title, required this.person, this.subtitle});
+
+  final String title;
+  final NamedPerson? person;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = person?.name ?? '—';
+    final phone = person?.phone;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: AppColors.surfaceContainer, borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          PersonAvatar(imageUrl: person?.imageUrl, name: person?.name),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                if (subtitle != null)
+                  Text(subtitle!, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          if (phone != null && phone.isNotEmpty)
+            IconButton(
+              onPressed: () => launchUrl(Uri.parse('tel:$phone')),
+              icon: const Icon(Icons.phone, color: AppColors.secondary),
+            ),
+        ],
+      ),
     );
   }
 }

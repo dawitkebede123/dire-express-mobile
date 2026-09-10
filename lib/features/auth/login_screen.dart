@@ -25,12 +25,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   var _loading = false;
   var _obscurePassword = true;
 
-  static const _demos = [
-    ('BROKER', 'broker@direexpress.com'),
-    ('DRIVER', 'driver@direexpress.com'),
-    ('CUSTOMER', 'customer@direexpress.com'),
-  ];
-
   @override
   void dispose() {
     _identifier.dispose();
@@ -49,7 +43,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _password.text,
             expectedRole: _role,
           );
-      return;
+      if (!mounted) return;
+      final user = ref.read(authControllerProvider).user;
+      if (user != null) context.go(user.homePath);
     } on ApiException catch (e) {
       if (kDebugMode) {
         debugPrint('LOGIN FAILED status=${e.statusCode} ${e.message}');
@@ -76,8 +72,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastConnectionFailed)));
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
-    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -190,23 +187,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Text(l10n.loginCreateOne, style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w700)),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(l10n.loginDemo, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _demos.map((d) {
-                      return ActionChip(
-                        label: Text(d.$1, style: const TextStyle(fontSize: 12)),
-                        onPressed: () {
-                          _identifier.text = d.$2;
-                          _password.text = 'password123';
-                          setState(() => _role = d.$1);
-                        },
-                      );
-                    }).toList(),
                   ),
                 ],
               ),

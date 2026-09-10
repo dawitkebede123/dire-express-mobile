@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../models/directory.dart';
 import '../../models/user.dart';
 import '../../shared/widgets/person_avatar.dart';
 
@@ -104,6 +105,11 @@ class AuthController extends Notifier<AuthState> {
           current.truckImageUrl!.isNotEmpty) {
         user = user.applyProfile(name: user.name, phone: user.phone, truckImageUrl: current.truckImageUrl);
       }
+      final meAgentId = user.agentId?.trim() ?? '';
+      final localAgentId = current.agentId?.trim() ?? '';
+      if (meAgentId.isEmpty && localAgentId.isNotEmpty) {
+        user = user.applyProfile(name: user.name, phone: user.phone, agentId: current.agentId);
+      }
       state = AuthState(user: user, loading: false);
       unawaited(prefetchPersonAvatar(user.imageUrl));
     } catch (_) {}
@@ -181,12 +187,7 @@ class AuthController extends Notifier<AuthState> {
         _ => null,
       };
       if (plate.isNotEmpty || vehicle.isNotEmpty || truckPath != null || capacity != null) {
-        Future<({
-          String? plateNo,
-          String? vehicleType,
-          double? loadingCapacity,
-          String? truckImageUrl,
-        })> patchDriver({String? truckImageUrl}) {
+        Future<DriverProfile> patchDriver({String? truckImageUrl}) {
           return _api.updateMyDriverProfile(
             plateNo: plate.isNotEmpty ? plate : null,
             vehicleType: vehicle.isNotEmpty ? vehicle : null,

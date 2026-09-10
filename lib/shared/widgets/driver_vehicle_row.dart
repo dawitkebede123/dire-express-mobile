@@ -17,7 +17,8 @@ class DriverAvailabilityBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: available ? AppColors.successContainer : AppColors.surfaceContainerHighest,
+        color: available ? AppColors.successContainer : Colors.transparent,
+        border: available ? null : Border.all(color: AppColors.outlineVariant),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -102,8 +103,8 @@ class DriverVehicleRow extends StatelessWidget {
                           DriverAvailabilityBadge(
                             available: driver.isAvailable,
                             label: driver.isAvailable
-                                ? l10n.brokerDriversAvailable
-                                : l10n.brokerDriversOnALoad,
+                                ? l10n.driverAvailabilityAvailable
+                                : l10n.driverAvailabilityUnavailable,
                           ),
                         ],
                       ),

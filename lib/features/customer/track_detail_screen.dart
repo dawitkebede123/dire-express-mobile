@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,7 +11,10 @@ import '../../core/driver_position_cache.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
 import '../../shared/format.dart';
+import '../../shared/media/load_document_upload.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/driver_vehicle_row.dart';
+import '../../shared/widgets/load_documents_section.dart';
 import '../../shared/widgets/person_avatar.dart';
 import '../../shared/widgets/pod_documents.dart';
 import '../../shared/widgets/status_chip.dart';
@@ -31,6 +35,8 @@ class CustomerTrackDetailScreen extends ConsumerStatefulWidget {
 class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailScreen> {
   FreightLoad? _load;
   LatLng? _driverPoint;
+  List<LoadDocument> _documents = [];
+  var _uploadingDocument = false;
   late final PusherHandler _handler;
 
   @override
@@ -73,13 +79,47 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
       if (!mounted) return;
       setState(() {
         _load = load;
+        if (load.documents.isNotEmpty) _documents = load.documents;
         if (load.latestLocation != null) {
           _driverPoint = LatLng(load.latestLocation!.lat, load.latestLocation!.lng);
         }
       });
+      unawaited(_ensureDocuments(load));
       unawaited(DriverPositionCache.instance.saveFromLoad(load));
       unawaited(_refreshLiveLocation());
     } catch (_) {}
+  }
+
+  Future<void> _ensureDocuments(FreightLoad load) async {
+    if (load.documents.isNotEmpty) return;
+    try {
+      final docs = await ref.read(apiClientProvider).listLoadDocuments(widget.loadId);
+      if (!mounted || docs.isEmpty) return;
+      setState(() => _documents = docs);
+    } catch (_) {}
+  }
+
+  Future<void> _addDocument() async {
+    final l10n = AppLocalizations.of(context);
+    if (_documents.length >= maxLoadDocuments) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDocumentsMaxReached)));
+      return;
+    }
+    setState(() => _uploadingDocument = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final picked = await pickAndUploadLoadDocument(api);
+      if (!mounted || picked == null) return;
+      final saved = await api.addLoadDocument(widget.loadId, url: picked.url, fileName: picked.fileName);
+      if (!mounted) return;
+      setState(() => _documents = [..._documents, saved]);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDocumentUploaded)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastUploadFailed)));
+    } finally {
+      if (mounted) setState(() => _uploadingDocument = false);
+    }
   }
 
   Future<void> _refreshLiveLocation() async {
@@ -94,6 +134,52 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
         loadId: widget.loadId,
       ));
     } catch (_) {}
+  }
+
+  Future<void> _approveDeletion() async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      await ref.read(apiClientProvider).approveLoadDeletion(widget.loadId);
+      if (!mounted) return;
+      ref.read(loadsRefreshProvider.notifier).state++;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDeletionApproved)));
+      context.pop();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.statusCode == 404) {
+        ref.read(loadsRefreshProvider.notifier).state++;
+        context.pop();
+        return;
+      }
+      final message = e.code == 'noDeletionPending' ? l10n.toastNoDeletionPending : l10n.toastActionFailed;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastActionFailed)));
+    }
+  }
+
+  Future<void> _rejectDeletion() async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      final updated = await ref.read(apiClientProvider).rejectLoadDeletion(widget.loadId);
+      if (!mounted) return;
+      setState(() => _load = updated);
+      ref.read(loadsRefreshProvider.notifier).state++;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDeletionRejected)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.statusCode == 404) {
+        ref.read(loadsRefreshProvider.notifier).state++;
+        context.pop();
+        return;
+      }
+      final message = e.code == 'noDeletionPending' ? l10n.toastNoDeletionPending : l10n.toastActionFailed;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastActionFailed)));
+    }
   }
 
   @override
@@ -113,6 +199,36 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
+          if (load.isDeletionPending) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.errorContainer,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(l10n.customerDeletionRequestTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  Text(l10n.customerDeletionRequestBody, style: const TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _approveDeletion,
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                    child: Text(l10n.customerApproveDeletion),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: _rejectDeletion,
+                    child: Text(l10n.customerRejectDeletion),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           TripMap(
             pickup: load.pickupLat != null ? LatLng(load.pickupLat!, load.pickupLng!) : null,
             delivery: load.deliveryLat != null ? LatLng(load.deliveryLat!, load.deliveryLng!) : null,
@@ -174,7 +290,25 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(load.driver?.name ?? l10n.customerNoDriver, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  load.driver?.name ?? l10n.customerNoDriver,
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              if (load.driver != null && load.driverIsAvailable != null) ...[
+                                const SizedBox(width: 8),
+                                DriverAvailabilityBadge(
+                                  available: load.driverIsAvailable!,
+                                  label: load.driverIsAvailable!
+                                      ? l10n.driverAvailabilityAvailable
+                                      : l10n.driverAvailabilityUnavailable,
+                                ),
+                              ],
+                            ],
+                          ),
                           Text(
                             load.driver != null
                                 ? l10n.customerAssignedDriver(equipmentLabel(l10n, load.equipmentType))
@@ -194,13 +328,21 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          LoadDocumentsSection(
+            documents: _documents,
+            adding: _uploadingDocument,
+            onAdd: _addDocument,
+          ),
           if (load.proofOfDelivery != null) ...[
             const SizedBox(height: 12),
             PodDocuments(pod: load.proofOfDelivery!),
           ],
         ],
       ),
-      bottomNavigationBar: Material(
+      bottomNavigationBar: load.isDeletionPending
+          ? null
+          : Material(
         color: AppColors.background,
         elevation: 8,
         child: SafeArea(
@@ -210,12 +352,6 @@ class _CustomerTrackDetailScreenState extends ConsumerState<CustomerTrackDetailS
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                OutlinedButton.icon(
-                  onPressed: () => launchUrl(Uri.parse('mailto:support@direexpress.com?subject=${Uri.encodeComponent(load.referenceNo)}')),
-                  icon: const Icon(Icons.description_outlined),
-                  label: Text(l10n.customerViewDocuments),
-                ),
-                const SizedBox(height: 8),
                 FilledButton.icon(
                   onPressed: () => launchUrl(Uri.parse('tel:+18005550100')),
                   icon: const Icon(Icons.headset_mic_outlined),

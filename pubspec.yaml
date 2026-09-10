@@ -1,7 +1,7 @@
 name: dire_express
 description: Dire Express — digital freight brokerage for brokers, drivers, and customers.
 publish_to: "none"
-version: 1.0.0+2
+version: 1.0.0+6
 
 environment:
   sdk: ^3.10.4
@@ -23,8 +23,10 @@ dependencies:
   pusher_channels_flutter: ^2.4.0
   geolocator: ^13.0.4
   image_picker: ^1.1.2
+  image: ^4.5.4
   crop_your_image: ^2.0.0
   signature: ^5.5.0
+  file_picker: ^8.1.7
   url_launcher: ^6.3.1
   path: ^1.9.1
   uuid: ^4.6.0

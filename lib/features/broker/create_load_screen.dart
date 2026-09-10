@@ -7,12 +7,15 @@ import 'package:latlong2/latlong.dart';
 import '../../core/api_client.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/directory.dart';
+import '../../models/load.dart';
 import '../../shared/format.dart';
+import '../../shared/media/load_document_upload.dart';
 import '../../shared/system_price.dart';
 import '../../shared/weight_unit.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/equipment_thumb.dart';
 import '../../shared/widgets/load_date_time_picker.dart';
+import '../../shared/widgets/load_documents_section.dart';
 import '../../shared/widgets/stepper.dart';
 import '../../shared/widgets/weight_input_row.dart';
 import '../../theme/app_theme.dart';
@@ -32,8 +35,10 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
   var _step = 0;
   var _submitting = false;
   var _uploadingReceipt = false;
+  var _uploadingDocument = false;
   DeviceTier? _tier;
   String? _paymentReceiptUrl;
+  List<LoadDocument> _documents = [];
   List<CustomerProfile> _customers = [];
   String? _customerId;
   var _equipment = 'DRY_VAN';
@@ -54,6 +59,7 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
   double? _systemPrice;
   var _pricingBusy = false;
   var _pricingError = false;
+  var _draftPersistenceEnabled = true;
 
   bool get _receiptRequired => _tier?.receiptRequired ?? false;
 
@@ -100,10 +106,11 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
     _distanceKm = draft.distanceKm;
     _systemPrice = draft.systemPrice;
     _paymentReceiptUrl = draft.paymentReceiptUrl;
+    _documents = List<LoadDocument>.from(draft.documents);
   }
 
   void _saveDraft() {
-    if (!mounted) return;
+    if (!_draftPersistenceEnabled || !mounted) return;
     saveCreateLoadDraft(
       ref,
       _asCustomer,
@@ -124,6 +131,7 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
         distanceKm: _distanceKm,
         systemPrice: _systemPrice,
         paymentReceiptUrl: _paymentReceiptUrl,
+        documents: List<LoadDocument>.from(_documents),
       ),
     );
   }
@@ -162,7 +170,9 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
       _step = 0;
       _submitting = false;
       _uploadingReceipt = false;
+      _uploadingDocument = false;
       _paymentReceiptUrl = null;
+      _documents = [];
       _equipment = 'DRY_VAN';
       _pickupDate = null;
       _deliveryDate = null;
@@ -338,6 +348,10 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDeliveryBeforePickup)));
       return;
     }
+    if (_step == 1 && _cargo.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastCargoRequired)));
+      return;
+    }
     final next = (_step + 1).clamp(0, 2);
     setState(() => _step = next);
     if (next == 2) {
@@ -369,11 +383,35 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
     }
   }
 
+  Future<void> _addDocument() async {
+    final l10n = AppLocalizations.of(context);
+    if (_documents.length >= maxLoadDocuments) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDocumentsMaxReached)));
+      return;
+    }
+    setState(() => _uploadingDocument = true);
+    try {
+      final doc = await pickAndUploadLoadDocument(ref.read(apiClientProvider));
+      if (!mounted || doc == null) return;
+      setState(() => _documents = [..._documents, doc]);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDocumentUploaded)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastUploadFailed)));
+    } finally {
+      if (mounted) setState(() => _uploadingDocument = false);
+    }
+  }
+
   Future<void> _submit() async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     if (_datesInvalid()) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.toastDeliveryBeforePickup)));
+      return;
+    }
+    if (_cargo.text.trim().isEmpty) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.toastCargoRequired)));
       return;
     }
     if (_receiptRequired && (_paymentReceiptUrl == null || _paymentReceiptUrl!.isEmpty)) {
@@ -404,11 +442,13 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
         if (_deliveryDate != null) 'deliveryDate': _deliveryDate!.toUtc().toIso8601String(),
         'cargoDescription': _cargo.text.trim(),
         if (_notes.text.isNotEmpty) 'notes': _notes.text.trim(),
+        if (_documents.isNotEmpty) 'documents': _documents.map((d) => d.toJson()).toList(),
         if (_paymentReceiptUrl != null && _paymentReceiptUrl!.isNotEmpty)
           'paymentReceiptUrl': _paymentReceiptUrl,
       });
       if (!mounted) return;
       ref.read(loadsRefreshProvider.notifier).state++;
+      _draftPersistenceEnabled = false;
       clearCreateLoadDraft(ref, _asCustomer);
       final message = widget.asCustomer ? l10n.toastRequestSubmitted : l10n.toastLoadCreated;
       if (widget.asCustomer) {
@@ -619,6 +659,16 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
             TextField(controller: _cargo, decoration: InputDecoration(labelText: l10n.brokerCargoDescription)),
             const SizedBox(height: 12),
             TextField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: l10n.brokerNotes)),
+            const SizedBox(height: 12),
+            LoadDocumentsSection(
+              documents: _documents,
+              adding: _uploadingDocument,
+              hint: l10n.loadDocumentsHint,
+              onAdd: _addDocument,
+              onRemove: (doc) => setState(() {
+                _documents = _documents.where((d) => d.url != doc.url || d.fileName != doc.fileName).toList();
+              }),
+            ),
           ] else ...[
             _Section(
               icon: Icons.check_circle_outline,
@@ -669,6 +719,11 @@ class _CreateLoadScreenState extends ConsumerState<CreateLoadScreen> {
                   _kv(l10n.brokerConfirmDelivery, _delivery.text),
                   _kv(l10n.brokerConfirmPickupDate, _pickupDate == null ? '—' : formatDateTime(_pickupDate!, locale)),
                   _kv(l10n.brokerConfirmCargo, _cargo.text.isEmpty ? '—' : _cargo.text),
+                  if (_documents.isNotEmpty)
+                    _kv(
+                      l10n.loadDocumentsTitle,
+                      _documents.map((d) => d.fileName).join(', '),
+                    ),
                 ],
               ),
             ),

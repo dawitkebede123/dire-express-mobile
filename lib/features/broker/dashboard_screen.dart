@@ -6,7 +6,6 @@ import '../../core/api_client.dart';
 import 'broker_loads_auto_refresh.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/load.dart';
-import '../../shared/format.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/load_card.dart';
 import '../../theme/app_theme.dart';
@@ -47,9 +46,7 @@ class _BrokerDashboardScreenState extends ConsumerState<BrokerDashboardScreen> {
       _load();
     });
     final l10n = AppLocalizations.of(context);
-    final locale = Localizations.localeOf(context);
-    final delivered = _loads.where((l) => l.status == 'DELIVERED').toList();
-    final revenue = delivered.fold<double>(0, (sum, l) => sum + (l.rate ?? 0));
+    final delivered = _loads.where((l) => l.status == 'DELIVERED').length;
     final active = _loads.where((l) => l.isActive).length;
     final pendingDrivers = _loads.where((l) => l.status == 'ASSIGNED').length;
     final recent = _loads.take(5).toList();
@@ -83,10 +80,10 @@ class _BrokerDashboardScreenState extends ConsumerState<BrokerDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(l10n.brokerTotalRevenue.toUpperCase(), style: const TextStyle(color: Colors.white70, letterSpacing: 1, fontSize: 12)),
+                        Text(l10n.brokerTotalLoads.toUpperCase(), style: const TextStyle(color: Colors.white70, letterSpacing: 1, fontSize: 12)),
                         const SizedBox(height: 6),
-                        Text(compactCurrency(revenue, locale), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800)),
-                        Text(l10n.brokerLoadsDelivered(delivered.length), style: const TextStyle(color: Colors.white70)),
+                        Text('${_loads.length}', style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800)),
+                        Text(l10n.brokerLoadsDelivered(delivered), style: const TextStyle(color: Colors.white70)),
                       ],
                     ),
                   ),

@@ -10,7 +10,13 @@ typedef PusherHandler = void Function(String event, Map<String, dynamic> data);
 class PusherService {
   PusherChannelsFlutter? _pusher;
   final _handlers = <String, Set<PusherHandler>>{};
+  final _nativeChannels = <String>{};
   var _ready = false;
+
+  bool _channelHasHandlers(String channel) {
+    final prefix = '$channel::';
+    return _handlers.keys.any((key) => key.startsWith(prefix));
+  }
 
   Future<void> init() async {
     if (!AppConfig.hasPusher || _ready) return;
@@ -50,8 +56,10 @@ class PusherService {
     if (!_ready || _pusher == null) return;
     final key = '$channel::$event';
     _handlers.putIfAbsent(key, () => <PusherHandler>{}).add(handler);
+    if (_nativeChannels.contains(channel)) return;
     try {
       await _pusher!.subscribe(channelName: channel);
+      _nativeChannels.add(channel);
     } catch (e) {
       debugPrint('Pusher subscribe failed: $e');
     }
@@ -60,9 +68,13 @@ class PusherService {
   Future<void> unsubscribe(String channel, String event, PusherHandler handler) async {
     final key = '$channel::$event';
     _handlers[key]?.remove(handler);
-    if ((_handlers[key]?.isEmpty ?? true) && _pusher != null) {
+    if (_handlers[key]?.isEmpty ?? false) {
+      _handlers.remove(key);
+    }
+    if (!_channelHasHandlers(channel) && _pusher != null && _nativeChannels.contains(channel)) {
       try {
         await _pusher!.unsubscribe(channelName: channel);
+        _nativeChannels.remove(channel);
       } catch (_) {}
     }
   }

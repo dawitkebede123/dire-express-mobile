@@ -71,8 +71,8 @@ class AppUser {
       vehicleType: pick(json, 'vehicleType') ?? pick(driver, 'vehicleType'),
       loadingCapacity: pickNumber(json, 'loadingCapacity') ?? pickNumber(driver, 'loadingCapacity'),
       truckImageUrl: pick(json, 'truckImageUrl') ?? pick(driver, 'truckImageUrl'),
-      agentId: json['agentId'] as String?,
-      imageUrl: json['imageUrl'] as String?,
+      agentId: pick(json, 'agentId'),
+      imageUrl: pick(json, 'imageUrl'),
     );
   }
 
@@ -84,6 +84,7 @@ class AppUser {
     String? vehicleType,
     double? loadingCapacity,
     String? truckImageUrl,
+    String? agentId,
   }) {
     return AppUser(
       id: id,
@@ -96,7 +97,7 @@ class AppUser {
       vehicleType: vehicleType ?? this.vehicleType,
       loadingCapacity: loadingCapacity ?? this.loadingCapacity,
       truckImageUrl: truckImageUrl ?? this.truckImageUrl,
-      agentId: agentId,
+      agentId: agentId ?? this.agentId,
       imageUrl: imageUrl,
     );
   }

@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AppConfig {
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://187.124.55.8',
+    defaultValue: 'https://direexpress.com.et',
   );
 
   static const defaultBasePrice = 50.0;

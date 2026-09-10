@@ -26,6 +26,23 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   final String? profilePath;
   final Widget? action;
 
+  /// Role shell tab roots — must use [GoRouter.go], never [GoRouter.push].
+  static const _shellTabPaths = {
+    '/broker',
+    '/broker/loads',
+    '/broker/drivers',
+    '/broker/customers',
+    '/broker/profile',
+    '/driver',
+    '/driver/active',
+    '/driver/history',
+    '/driver/profile',
+    '/customer',
+    '/customer/request',
+    '/customer/history',
+    '/customer/profile',
+  };
+
   @override
   Size get preferredSize => const Size.fromHeight(64);
 
@@ -77,7 +94,15 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               if (profilePath != null)
                 IconButton(
                   tooltip: l10n.headerProfile,
-                  onPressed: () => context.push(profilePath!),
+                  onPressed: () {
+                    final path = profilePath!;
+                    // Shell tabs: go switches branch. Visit/detail routes: push stacks.
+                    if (_shellTabPaths.contains(path)) {
+                      context.go(path);
+                    } else {
+                      context.push(path);
+                    }
+                  },
                   icon: PersonAvatar(
                     imageUrl: user?.imageUrl,
                     name: user?.name,

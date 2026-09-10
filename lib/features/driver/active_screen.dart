@@ -156,6 +156,9 @@ class _DriverActiveScreenState extends ConsumerState<DriverActiveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(loadsRefreshProvider, (_, _) {
+      unawaited(_fetch());
+    });
     ref.listen<Set<String>>(driverLocationControllerProvider, (prev, next) {
       if (prev == next) return;
       unawaited(_fetch());

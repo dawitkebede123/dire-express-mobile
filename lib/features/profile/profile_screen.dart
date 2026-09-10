@@ -14,6 +14,7 @@ import '../../core/phone.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/format.dart';
+import '../../shared/media/avatar_image.dart';
 import '../../shared/weight_unit.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/equipment_thumb.dart';
@@ -24,6 +25,7 @@ import '../../shared/widgets/weight_input_row.dart';
 import '../../theme/app_theme.dart';
 import '../maps/offline_maps_screen.dart';
 import 'avatar_crop_page.dart';
+import 'profile_more_screen.dart';
 
 enum _EditField { name, phone, company, plate, vehicle, capacity }
 
@@ -48,6 +50,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   var _loadingCapacity = '';
   var _capacityUnit = WeightUnit.quintal;
   String? _truckImageUrl;
+  var _isAvailable = true;
   _EditField? _editing;
   var _loading = true;
   var _saving = false;
@@ -93,6 +96,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           vehicle = driver.vehicleType ?? '';
           loadingCapacity = driver.loadingCapacity;
           truckImageUrl = driver.truckImageUrl;
+          if (mounted) setState(() => _isAvailable = driver.isAvailable);
         } catch (_) {}
         if (plate.isEmpty) {
           plate = user['plateNo']?.toString().trim() ??
@@ -131,6 +135,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _company.isNotEmpty ? _company : null,
       ].map((v) => v?.trim()).firstWhere((v) => v != null && v.isNotEmpty, orElse: () => null);
       final savedImage = user['imageUrl'] as String?;
+      final rawAgentId = user['agentId']?.toString().trim();
+      final savedAgentId = (rawAgentId != null && rawAgentId.isNotEmpty)
+          ? rawAgentId
+          : current?.agentId;
       setState(() {
         _name = savedName;
         _phone = savedPhone ?? '';
@@ -154,6 +162,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               vehicleType: _vehicle.isNotEmpty ? _vehicle : current.vehicleType,
               loadingCapacity: double.tryParse(_loadingCapacity) ?? current.loadingCapacity,
               truckImageUrl: _truckImageUrl ?? current.truckImageUrl,
+              agentId: savedAgentId,
             )
             .applyImageUrl(savedImage);
         if (next.name != current.name ||
@@ -163,6 +172,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             next.vehicleType != current.vehicleType ||
             next.loadingCapacity != current.loadingCapacity ||
             next.truckImageUrl != current.truckImageUrl ||
+            next.agentId != current.agentId ||
             next.imageUrl != current.imageUrl) {
           ref.read(authControllerProvider.notifier).applyUser(next);
         }
@@ -170,6 +180,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (_) {
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _setAvailability(bool value) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final previous = _isAvailable;
+    setState(() {
+      _isAvailable = value;
+      _saving = true;
+    });
+    try {
+      final driver = await ref.read(apiClientProvider).updateMyDriverProfile(isAvailable: value);
+      if (!mounted || !context.mounted) return;
+      setState(() => _isAvailable = driver.isAvailable);
+      messenger?.showSnackBar(SnackBar(content: Text(l10n.toastProfileSaved)));
+    } catch (_) {
+      if (!mounted || !context.mounted) return;
+      setState(() => _isAvailable = previous);
+      messenger?.showSnackBar(SnackBar(content: Text(l10n.toastProfileSaveFailed)));
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -255,7 +287,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (source == null || !mounted) return;
 
     try {
-      final file = await ImagePicker().pickImage(source: source);
+      final file = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 85,
+      );
       if (file == null || !mounted) return;
 
       final user = ref.read(authControllerProvider).user;
@@ -315,7 +352,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (source == null || !mounted) return;
 
     try {
-      final file = await ImagePicker().pickImage(source: source);
+      final file = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 85,
+      );
       if (file == null || !mounted) return;
 
       final originalBytes = await file.readAsBytes();
@@ -328,10 +370,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final user = ref.read(authControllerProvider).user;
       if (user == null) return;
 
+      final jpegBytes = compressAvatar(croppedBytes);
       final croppedFile = File(
-        p.join(Directory.systemTemp.path, 'avatar-${DateTime.now().millisecondsSinceEpoch}.png'),
+        p.join(Directory.systemTemp.path, 'avatar-${DateTime.now().millisecondsSinceEpoch}.jpg'),
       );
-      await croppedFile.writeAsBytes(croppedBytes, flush: true);
+      await croppedFile.writeAsBytes(jpegBytes, flush: true);
 
       setState(() => _saving = true);
       final api = ref.read(apiClientProvider);
@@ -672,9 +715,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   _vehicleRow(l10n),
                   _capacityRow(l10n),
+                  SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    secondary: const Icon(Icons.toggle_on_outlined, color: AppColors.secondary),
+                    title: Text(
+                      _isAvailable
+                          ? l10n.driverAvailabilityAvailable
+                          : l10n.driverAvailabilityUnavailable,
+                    ),
+                    subtitle: Text(l10n.driverAvailabilityHint, style: const TextStyle(fontSize: 12)),
+                    value: _isAvailable,
+                    onChanged: _loading || _saving ? null : _setAvailability,
+                  ),
                 ],
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.more_horiz, color: AppColors.secondary),
+            title: Text(l10n.profileMore),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ProfileMoreScreen()),
+              );
+            },
           ),
           const SizedBox(height: 16),
           ListTile(
@@ -720,6 +787,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Widget _editTextButton(AppLocalizations l10n, VoidCallback? onPressed) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.secondary,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(l10n.commonEdit),
+    );
+  }
+
   Widget _capacityRow(AppLocalizations l10n) {
     final editing = _editing == _EditField.capacity;
     final quintals = double.tryParse(_loadingCapacity);
@@ -748,10 +828,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               if (!editing)
-                IconButton(
-                  tooltip: l10n.commonEdit,
-                  onPressed: _loading || _saving ? null : () => _startEdit(_EditField.capacity),
-                  icon: const Icon(Icons.edit_outlined, color: AppColors.secondary),
+                _editTextButton(
+                  l10n,
+                  _loading || _saving ? null : () => _startEdit(_EditField.capacity),
                 ),
             ],
           ),
@@ -815,10 +894,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               if (!editing)
-                IconButton(
-                  tooltip: l10n.commonEdit,
-                  onPressed: _loading || _saving ? null : () => _startEdit(_EditField.vehicle),
-                  icon: const Icon(Icons.edit_outlined, color: AppColors.secondary),
+                _editTextButton(
+                  l10n,
+                  _loading || _saving ? null : () => _startEdit(_EditField.vehicle),
                 ),
             ],
           ),
@@ -908,10 +986,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               if (!editing)
-                IconButton(
-                  tooltip: l10n.commonEdit,
-                  onPressed: _loading || _saving ? null : () => _startEdit(field),
-                  icon: const Icon(Icons.edit_outlined, color: AppColors.secondary),
+                _editTextButton(
+                  l10n,
+                  _loading || _saving ? null : () => _startEdit(field),
                 ),
             ],
           ),

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:path/path.dart' as p;
 
 import '../models/directory.dart';
 import '../models/load.dart';
@@ -179,6 +180,7 @@ class ApiClient {
     );
     final userJson = _asMap(data['user']);
     _mergeDriverFields(userJson, data);
+    _mergeBrokerFields(userJson, data);
     final user = AppUser.fromJson(userJson);
     final token = data['token'] as String;
     await _storage.writeToken(token);
@@ -189,6 +191,7 @@ class ApiClient {
     final data = await _unwrap(_dio.get('/api/auth/mobile/me'));
     final userJson = _asMap(data['user']);
     _mergeDriverFields(userJson, data);
+    _mergeBrokerFields(userJson, data);
     return AppUser.fromJson(userJson);
   }
 
@@ -251,6 +254,14 @@ class ApiClient {
     if (truckImage != null) user['truckImageUrl'] = truckImage;
   }
 
+  void _mergeBrokerFields(Map<String, dynamic> user, Map<String, dynamic> data) {
+    final nestedBroker = _asMap(data['broker']).isNotEmpty
+        ? _asMap(data['broker'])
+        : _asMap(user['broker']);
+    final agentId = _stringField(user, 'agentId') ?? _stringField(nestedBroker, 'agentId');
+    if (agentId != null) user['agentId'] = agentId;
+  }
+
   Map<String, dynamic> _driverMap(Map<String, dynamic> data) {
     final nested = _asMap(data['driver']);
     if (nested.isNotEmpty) return nested;
@@ -270,6 +281,7 @@ class ApiClient {
     final company = _stringField(user, 'company') ?? _stringField(customer, 'company');
     if (company != null) user['company'] = company;
     _mergeDriverFields(user, data);
+    _mergeBrokerFields(user, data);
     return user;
   }
 
@@ -290,6 +302,10 @@ class ApiClient {
       }),
     );
     return _asMap(data['user']);
+  }
+
+  Future<void> deleteAccount(String password) async {
+    await _unwrap(_dio.post('/api/me/delete', data: {'password': password.trim()}));
   }
 
   Future<void> register(Map<String, dynamic> body) async {
@@ -322,6 +338,9 @@ class ApiClient {
       loadJson['proofOfDelivery'] ??= pod;
       loadJson['pod'] ??= pod;
     }
+    if (loadJson['documents'] == null && data['documents'] != null) {
+      loadJson['documents'] = data['documents'];
+    }
     return FreightLoad.fromJson(loadJson);
   }
 
@@ -340,6 +359,38 @@ class ApiClient {
     return FreightLoad.fromJson(data['load'] as Map<String, dynamic>);
   }
 
+  Future<FreightLoad> updateLoad(String id, Map<String, dynamic> body) async {
+    final data = await _unwrap(_dio.patch('/api/loads/$id', data: body));
+    final loadJson = _asMap(data['load']);
+    if (loadJson.isEmpty) {
+      throw ApiException('Update failed');
+    }
+    return FreightLoad.fromJson(loadJson);
+  }
+
+  Future<List<LoadDocument>> listLoadDocuments(String loadId) async {
+    final data = await _unwrap(_dio.get('/api/loads/$loadId/documents'));
+    return parseLoadDocuments(data['documents'] ?? data['data'] ?? data);
+  }
+
+  Future<LoadDocument> addLoadDocument(
+    String loadId, {
+    required String url,
+    required String fileName,
+  }) async {
+    final data = await _unwrap(
+      _dio.post('/api/loads/$loadId/documents', data: {
+        'url': url,
+        'fileName': fileName,
+      }),
+    );
+    final docMap = _asMap(data['document']);
+    if (docMap.isNotEmpty) return LoadDocument.fromJson(docMap);
+    final fromList = parseLoadDocuments(data['documents']);
+    if (fromList.isNotEmpty) return fromList.last;
+    return LoadDocument(url: url, fileName: fileName);
+  }
+
   Future<FreightLoad> assignDriver(String loadId, String driverId) async {
     final data = await _unwrap(
       _dio.post('/api/loads/$loadId/assign', data: {'driverId': driverId}),
@@ -351,6 +402,26 @@ class ApiClient {
     final data = await _unwrap(
       _dio.post('/api/loads/$loadId/respond', data: {'action': action}),
     );
+    return FreightLoad.fromJson(data['load'] as Map<String, dynamic>);
+  }
+
+  Future<FreightLoad> requestLoadDeletion(String loadId) async {
+    final data = await _unwrap(_dio.post('/api/loads/$loadId/deletion-request'));
+    return FreightLoad.fromJson(data['load'] as Map<String, dynamic>);
+  }
+
+  Future<FreightLoad> approveLoadDeletion(String loadId) async {
+    final data = await _unwrap(_dio.post('/api/loads/$loadId/deletion-approve'));
+    return FreightLoad.fromJson(data['load'] as Map<String, dynamic>);
+  }
+
+  Future<FreightLoad> rejectLoadDeletion(String loadId) async {
+    final data = await _unwrap(_dio.post('/api/loads/$loadId/deletion-reject'));
+    return FreightLoad.fromJson(data['load'] as Map<String, dynamic>);
+  }
+
+  Future<FreightLoad> cancelLoadDeletion(String loadId) async {
+    final data = await _unwrap(_dio.post('/api/loads/$loadId/deletion-cancel'));
     return FreightLoad.fromJson(data['load'] as Map<String, dynamic>);
   }
 
@@ -456,33 +527,17 @@ class ApiClient {
     return (company: _stringField(customer, 'company'));
   }
 
-  Future<({
-    String? plateNo,
-    String? vehicleType,
-    double? loadingCapacity,
-    String? truckImageUrl,
-  })> getMyDriverProfile() async {
-    final user = await getMeProfile();
-    final nestedDriver = _asMap(user['driver']);
-    final fields = _driverFieldsFromMap(nestedDriver.isNotEmpty ? nestedDriver : user);
-    return (
-      plateNo: fields.plateNo ?? _plateField(user),
-      vehicleType: fields.vehicleType ?? _stringField(user, 'vehicleType'),
-      loadingCapacity: fields.loadingCapacity ?? _numberField(user, 'loadingCapacity'),
-      truckImageUrl: fields.truckImageUrl ?? _stringField(user, 'truckImageUrl'),
-    );
+  Future<DriverProfile> getMyDriverProfile() async {
+    final data = await _unwrap(_dio.get('/api/drivers/me'));
+    return DriverProfile.fromJson(_driverMap(data));
   }
 
-  Future<({
+  Future<DriverProfile> updateMyDriverProfile({
     String? plateNo,
     String? vehicleType,
     double? loadingCapacity,
     String? truckImageUrl,
-  })> updateMyDriverProfile({
-    String? plateNo,
-    String? vehicleType,
-    double? loadingCapacity,
-    String? truckImageUrl,
+    bool? isAvailable,
   }) async {
     final data = await _unwrap(
       _dio.patch('/api/drivers/me', data: {
@@ -490,15 +545,16 @@ class ApiClient {
         if (vehicleType != null) 'vehicleType': vehicleType,
         if (loadingCapacity != null) 'loadingCapacity': loadingCapacity,
         if (truckImageUrl != null) 'truckImageUrl': truckImageUrl,
+        if (isAvailable != null) 'isAvailable': isAvailable,
       }),
     );
-    return _driverFieldsFromMap(_driverMap(data));
+    return DriverProfile.fromJson(_driverMap(data));
   }
 
   Future<String> uploadFile(String path, {String kind = 'pod'}) async {
     final form = FormData.fromMap({
       'kind': kind,
-      'file': await MultipartFile.fromFile(path),
+      'file': await MultipartFile.fromFile(path, filename: p.basename(path)),
     });
     final data = await _unwrap(_dio.post('/api/uploads', data: form));
     final raw = _stringField(data, 'url');

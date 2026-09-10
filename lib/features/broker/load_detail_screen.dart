@@ -14,14 +14,17 @@ import '../../shared/format.dart';
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/driver_vehicle_row.dart';
 import '../../shared/widgets/equipment_thumb.dart';
+import '../../shared/widgets/load_documents_section.dart';
 import '../../shared/widgets/person_avatar.dart';
 import '../../shared/widgets/pod_documents.dart';
+import '../../shared/media/load_document_upload.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../../shared/widgets/tracking_timeline.dart';
 import '../../shared/widgets/truck_thumb.dart';
 import '../../theme/app_theme.dart';
 import '../maps/trip_map.dart';
 import '../notifications/pusher_service.dart';
+import 'edit_load_sheet.dart';
 
 class BrokerLoadDetailScreen extends ConsumerStatefulWidget {
   const BrokerLoadDetailScreen({super.key, required this.loadId});
@@ -35,6 +38,8 @@ class BrokerLoadDetailScreen extends ConsumerStatefulWidget {
 class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen> {
   FreightLoad? _load;
   LatLng? _driverPoint;
+  List<LoadDocument> _documents = [];
+  var _uploadingDocument = false;
   late final PusherHandler _handler;
 
   @override
@@ -77,13 +82,47 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
       if (!mounted) return;
       setState(() {
         _load = load;
+        if (load.documents.isNotEmpty) _documents = load.documents;
         if (load.latestLocation != null) {
           _driverPoint = LatLng(load.latestLocation!.lat, load.latestLocation!.lng);
         }
       });
+      unawaited(_ensureDocuments(load));
       unawaited(DriverPositionCache.instance.saveFromLoad(load));
       unawaited(_refreshLiveLocation());
     } catch (_) {}
+  }
+
+  Future<void> _ensureDocuments(FreightLoad load) async {
+    if (load.documents.isNotEmpty) return;
+    try {
+      final docs = await ref.read(apiClientProvider).listLoadDocuments(widget.loadId);
+      if (!mounted || docs.isEmpty) return;
+      setState(() => _documents = docs);
+    } catch (_) {}
+  }
+
+  Future<void> _addDocument() async {
+    final l10n = AppLocalizations.of(context);
+    if (_documents.length >= maxLoadDocuments) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDocumentsMaxReached)));
+      return;
+    }
+    setState(() => _uploadingDocument = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final picked = await pickAndUploadLoadDocument(api);
+      if (!mounted || picked == null) return;
+      final saved = await api.addLoadDocument(widget.loadId, url: picked.url, fileName: picked.fileName);
+      if (!mounted) return;
+      setState(() => _documents = [..._documents, saved]);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDocumentUploaded)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastUploadFailed)));
+    } finally {
+      if (mounted) setState(() => _uploadingDocument = false);
+    }
   }
 
   Future<void> _refreshLiveLocation() async {
@@ -114,6 +153,20 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
     return false;
   }
 
+  Future<void> _editLoad() async {
+    final load = _load;
+    if (load == null || !load.canEditLoad) return;
+    final l10n = AppLocalizations.of(context);
+    final updated = await showEditLoadSheet(context, load);
+    if (!mounted || updated == null) return;
+    setState(() {
+      _load = updated;
+      if (updated.documents.isNotEmpty) _documents = updated.documents;
+    });
+    ref.read(loadsRefreshProvider.notifier).state++;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastLoadUpdated)));
+  }
+
   Future<void> _assign() async {
     final l10n = AppLocalizations.of(context);
     final assigned = _load?.driver;
@@ -133,7 +186,7 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
             return DriverVehicleRow(
               driver: d,
               l10n: l10n,
-              enabled: !current,
+              enabled: !current && d.isAvailable,
               isCurrent: current,
               loadWeight: loadWeight,
               onTap: () => Navigator.pop(context, d.id),
@@ -163,6 +216,72 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
     }
   }
 
+  Future<void> _requestDeletion() async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.brokerDeletionConfirmTitle),
+        content: Text(l10n.brokerDeletionConfirmBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.commonCancel)),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: Text(l10n.brokerRequestDeletion),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final updated = await ref.read(apiClientProvider).requestLoadDeletion(widget.loadId);
+      if (!mounted) return;
+      setState(() => _load = updated);
+      ref.read(loadsRefreshProvider.notifier).state++;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDeletionRequested)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      final message = e.code == 'cannotRequestDeletion'
+          ? l10n.toastCannotRequestDeletion
+          : l10n.toastActionFailed;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastActionFailed)));
+    }
+  }
+
+  Future<void> _cancelDeletion() async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.brokerCancelDeletionConfirmTitle),
+        content: Text(l10n.brokerCancelDeletionConfirmBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.brokerCancelDeletion)),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final updated = await ref.read(apiClientProvider).cancelLoadDeletion(widget.loadId);
+      if (!mounted) return;
+      setState(() => _load = updated);
+      ref.read(loadsRefreshProvider.notifier).state++;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastDeletionCancelled)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      final message = e.code == 'noDeletionPending' ? l10n.toastNoDeletionPending : l10n.toastActionFailed;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastActionFailed)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -177,15 +296,51 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
 
     final pickup = load.pickupLat != null && load.pickupLng != null ? LatLng(load.pickupLat!, load.pickupLng!) : null;
     final delivery = load.deliveryLat != null && load.deliveryLng != null ? LatLng(load.deliveryLat!, load.deliveryLng!) : null;
-    final canAssign = const {'PENDING', 'CREATED', 'REJECTED', 'ASSIGNED'}.contains(load.status);
+    final canAssign = load.canAssignDriver;
+    final canEdit = load.canEditLoad;
     final hasDriver = load.driver != null && load.driver!.name.isNotEmpty;
+    final showBottomBar = canAssign || canEdit || load.canRequestDeletion || load.canCancelDeletion;
 
     return Scaffold(
-      appBar: AppHeader(title: l10n.brokerLoadDetailTitle, showBack: true, notificationsPath: '/broker/notifications', profilePath: '/broker/profile'),
+      appBar: AppHeader(
+        title: l10n.brokerLoadDetailTitle,
+        showBack: true,
+        notificationsPath: '/broker/notifications',
+        profilePath: '/broker/profile',
+        action: canEdit
+            ? TextButton(
+                onPressed: _editLoad,
+                child: Text(l10n.brokerEditLoad),
+              )
+            : null,
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
           Row(children: [Text(load.referenceNo, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700)), const Spacer(), StatusChip(status: load.status)]),
+          if (load.isDeletionPending) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.errorContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.hourglass_top_outlined, color: AppColors.error, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l10n.brokerDeletionPending,
+                      style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           TripMap(pickup: pickup, delivery: delivery, driver: _driverPoint, showLiveBadge: load.status == 'IN_TRANSIT', expandable: true),
           const SizedBox(height: 12),
@@ -234,6 +389,13 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
             vehicleType: load.driverVehicle,
             loadingCapacity: load.driverLoadingCapacity,
             truckImageUrl: load.driverTruckImageUrl,
+            isAvailable: load.driverIsAvailable,
+          ),
+          const SizedBox(height: 12),
+          LoadDocumentsSection(
+            documents: _documents,
+            adding: _uploadingDocument,
+            onAdd: _addDocument,
           ),
           if (load.proofOfDelivery != null) ...[
             const SizedBox(height: 12),
@@ -241,7 +403,7 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
           ],
         ],
       ),
-      bottomNavigationBar: canAssign
+      bottomNavigationBar: showBottomBar
           ? Material(
               color: AppColors.background,
               elevation: 8,
@@ -249,9 +411,35 @@ class _BrokerLoadDetailScreenState extends ConsumerState<BrokerLoadDetailScreen>
                 top: false,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: FilledButton(
-                    onPressed: _assign,
-                    child: Text(hasDriver ? l10n.brokerChangeDriver : l10n.brokerAssignDriver),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (canEdit)
+                        OutlinedButton(
+                          onPressed: _editLoad,
+                          child: Text(l10n.brokerEditLoad),
+                        ),
+                      if (canEdit && canAssign) const SizedBox(height: 8),
+                      if (canAssign)
+                        FilledButton(
+                          onPressed: _assign,
+                          child: Text(hasDriver ? l10n.brokerChangeDriver : l10n.brokerAssignDriver),
+                        ),
+                      if ((canEdit || canAssign) && load.canRequestDeletion) const SizedBox(height: 8),
+                      if (load.canRequestDeletion)
+                        OutlinedButton(
+                          onPressed: _requestDeletion,
+                          style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                          child: Text(l10n.brokerRequestDeletion),
+                        ),
+                      if (load.canCancelDeletion) ...[
+                        if (canEdit || canAssign || load.canRequestDeletion) const SizedBox(height: 8),
+                        OutlinedButton(
+                          onPressed: _cancelDeletion,
+                          child: Text(l10n.brokerCancelDeletion),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -300,6 +488,7 @@ class _DriverCard extends StatelessWidget {
     this.vehicleType,
     this.loadingCapacity,
     this.truckImageUrl,
+    this.isAvailable,
   });
 
   final AppLocalizations l10n;
@@ -307,6 +496,7 @@ class _DriverCard extends StatelessWidget {
   final String? vehicleType;
   final double? loadingCapacity;
   final String? truckImageUrl;
+  final bool? isAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +523,20 @@ class _DriverCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(l10n.brokerDriver, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Row(
+                  children: [
+                    Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700))),
+                    if (person != null && isAvailable != null) ...[
+                      const SizedBox(width: 8),
+                      DriverAvailabilityBadge(
+                        available: isAvailable!,
+                        label: isAvailable!
+                            ? l10n.driverAvailabilityAvailable
+                            : l10n.driverAvailabilityUnavailable,
+                      ),
+                    ],
+                  ],
+                ),
                 Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
               ],
             ),

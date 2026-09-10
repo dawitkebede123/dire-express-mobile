@@ -76,6 +76,20 @@ class LoadRowCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  if (load.isDeletionPending)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.hourglass_top_outlined, size: 14, color: AppColors.error.withValues(alpha: 0.9)),
+                          const SizedBox(width: 6),
+                          Text(
+                            l10n.loadDeletionPending,
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.error.withValues(alpha: 0.9)),
+                          ),
+                        ],
+                      ),
+                    ),
                   RouteMini(
                     pickupCity: shortAddress(load.pickupAddress),
                     pickupTime: formatDayTime(load.pickupDate, l10n, locale),

@@ -9,6 +9,7 @@ import '../../shared/widgets/load_card.dart';
 import '../../theme/app_theme.dart';
 import '../auth/auth_controller.dart';
 import '../notifications/pusher_service.dart';
+import 'gps_service.dart';
 
 class DriverBoardScreen extends ConsumerStatefulWidget {
   const DriverBoardScreen({super.key});
@@ -22,6 +23,7 @@ class _DriverBoardScreenState extends ConsumerState<DriverBoardScreen> {
   List<FreightLoad> _loads = [];
   var _loading = true;
   String? _busyId;
+  String? _userId;
   late final PusherHandler _handler;
 
   @override
@@ -36,17 +38,16 @@ class _DriverBoardScreenState extends ConsumerState<DriverBoardScreen> {
       _fetch();
     };
     _fetch();
-    final userId = ref.read(authControllerProvider).user?.id;
-    if (userId != null) {
-      pusherService.subscribe('user-$userId', 'notification', _handler);
+    _userId = ref.read(authControllerProvider).user?.id;
+    if (_userId != null) {
+      pusherService.subscribe('user-$_userId', 'notification', _handler);
     }
   }
 
   @override
   void dispose() {
-    final userId = ref.read(authControllerProvider).user?.id;
-    if (userId != null) {
-      pusherService.unsubscribe('user-$userId', 'notification', _handler);
+    if (_userId != null) {
+      pusherService.unsubscribe('user-$_userId', 'notification', _handler);
     }
     super.dispose();
   }
@@ -67,22 +68,44 @@ class _DriverBoardScreenState extends ConsumerState<DriverBoardScreen> {
     final l10n = AppLocalizations.of(context);
     setState(() => _busyId = id);
     try {
-      await ref.read(apiClientProvider).respond(id, action);
+      final updated = await ref.read(apiClientProvider).respond(id, action);
       if (!mounted) return;
+      setState(() {
+        final i = _loads.indexWhere((l) => l.id == id);
+        if (i >= 0) {
+          _loads = [..._loads]..[i] = updated;
+        } else {
+          _loads = [..._loads, updated];
+        }
+        if (action == 'accept') _tab = 1;
+        _busyId = null;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(action == 'accept' ? l10n.toastLoadAccepted : l10n.toastLoadRejected)),
       );
+      ref.read(loadsRefreshProvider.notifier).state++;
+      if (action == 'accept') {
+        final gpsError = await ref.read(driverLocationControllerProvider.notifier).beginTrip(updated.id, load: updated);
+        if (!mounted) return;
+        if (gpsError == 'denied') {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.driverGpsDenied)));
+        } else if (gpsError == 'unavailable') {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.driverGpsUnavailable)));
+        }
+      }
       await _fetch();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.toastActionFailed)));
-    } finally {
       if (mounted) setState(() => _busyId = null);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(loadsRefreshProvider, (_, _) {
+      _fetch();
+    });
     final l10n = AppLocalizations.of(context);
     final available = _loads.where((l) => l.status == 'ASSIGNED').toList();
     final trips = _loads.where((l) => l.status != 'ASSIGNED').toList();
